@@ -124,6 +124,10 @@ filters.exe -outfolder D:\tmp\flt -flthp 127 -fltfreq 5000 -fltwnd -exp 100 -dB 
 </pre>
 Saves series of 10 frequency and impulse responses of high-pass filter starting from 127 points length and 5000 Hz cutoff frequency to multi-frame GIF files in `D:\tmp\flt` folder, using exponential frequency scale, displaying values in decibels (top at 10 dB, range 200 dB) with grid on the image of 400 pixels height and 600 pixels width. Also reads audio data from file `D:\audio\test.wav`, processes it with 1st calculated filter and saves result to output folder as `D:\tmp\test.wav`
 
+Resulting image with impulse response:
+
+![image](hp.gif)
+
 ## External libraries
 
 These additional libraries are used:
