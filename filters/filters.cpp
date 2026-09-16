@@ -2,7 +2,6 @@
 //
 
 #include "filters.h"
-#include "./filter/firfilter.h"
 #include "./analyzer/analyzer.h"
 #pragma warning(push)
 #pragma warning(disable:4267)
@@ -13,9 +12,6 @@
 #include "AudioFile.h"
 #pragma warning(pop)
 
-constexpr int nDefSampleRate = 48000, nMinSampleRate = 1000, nMaxSampleRate = 100000,
-nFIRfreqDef = 1000, nMinFIRfreq = 10, nMinExpFreq = 10, nMaxExpFreq = 1000, nFFTszDef = 4096, nMaxDelay = 9999;
-
 namespace fs = std::filesystem;
 
 void printHelp(char** argv) {
@@ -23,7 +19,7 @@ void printHelp(char** argv) {
 	std::cout << "Usage: " << fmain.filename() << " [options]" << '\n';
 	std::cout << "\noptions can be:" << '\n';
 	std::cout << "-help\t\tdisplay this help" << '\n';
-	std::cout << "-sr {N}\t\tset sample rate to {N} Hz (can be " << nMinSampleRate << " to " << nMaxSampleRate << ", default is " << nDefSampleRate << ")\n";
+	std::cout << "-sr {N}\t\tset sample rate to {N} Hz (can be " << MIN_SAMPLE_RATE << " to " << MAX_SAMPLE_RATE << ", default is " << DEF_SAMPLE_RATE << ")\n";
 	std::cout << "-flthp {N}\tgenerate high-pass FIR filter of {N} points length (127+ recommended)" << '\n';
 	std::cout << "-fltlp {N}\tgenerate low-pass FIR filter of {N} points length (127+ recommended)" << '\n';
 	std::cout << "-fltfreq {N}\tset {N} Hz frequency for low/high-pass FIR filter (must be less than half sample rate)" << '\n';
@@ -36,7 +32,7 @@ void printHelp(char** argv) {
 	std::cout << "-dB\t\tuse vertical scale in decibels for drawing frequency response" << '\n';
 	std::cout << "-range {dB}\tset vertical range (100 dB by default) for drawing in decibels" << '\n';
 	std::cout << "-top {dB}\tset top of range (0 dB by default) for drawing in decibels" << '\n';
-	std::cout << "-exp {N}\tdraw with exponential frequency scale, starting from {N} Hz (can be " << nMinExpFreq << " to " << nMaxExpFreq << ")\n";
+	std::cout << "-exp {N}\tdraw with exponential frequency scale, starting from {N} Hz (can be " << MIN_EXP_FREQ << " to " << MAX_EXP_FREQ << ")\n";
 	std::cout << "\tIMPORTANT: width and starting frequency must be specified for exponential frequency scale" << '\n';
 	std::cout << "-grid\t\tdraw grid on frequency/impulse response" << '\n';
 	std::cout << "-bw\t\tdraw image in black and white (color by default)" << '\n';
@@ -77,156 +73,15 @@ int main(int argc, char* argv[])
 
 	imgOptions io;
 
-	auto getFltLen = [&input, &io]() {
-		bool bOK = true; int nFltLen = 0;
-		auto checkFIRLen = [](const int nlen) {
-			if (nlen < MIN_FIR_LENGTH || nlen > MAX_FIR_LENGTH) {
-				std::cout << "Error: FIR filter length must be between " << MIN_FIR_LENGTH << " and " << MAX_FIR_LENGTH << '\n';
-				return false;
-			}
-			return true;
-		};
-		if (input.cmdOptionExists("-fltlp")) {
-			const auto& param = input.getThisOption();
-			const auto nlen = atoi(param.c_str());
-			if (!checkFIRLen(nlen))
-				bOK = false;
-			nFltLen = nlen;
-			io.LPF = true;
-		}
-		else if (input.cmdOptionExists("-flthp")) {
-			const auto& param = input.getThisOption();
-			const auto nlen = atoi(param.c_str());
-			if (!checkFIRLen(nlen))
-				bOK = false;
-			nFltLen = nlen;
-			io.LPF = false;
-		}
-		if (nFltLen < MIN_FIR_LENGTH) {
-			std::cout << "No options specified." << '\n';
-			bOK = false;
-		}
-		else {
-			if (input.cmdOptionExists("-stepsize")) {
-				const auto& param = input.getThisOption();
-				io.nStepSize = atoi(param.c_str());
-			}
-			if (input.cmdOptionExists("-lensteps")) {
-				const auto& param = input.getThisOption();
-				io.nLenSteps = atoi(param.c_str());
-			}
-			io.CheckLenSteps();
-		}
-		return std::make_pair(bOK, nFltLen);
-	};
-	const auto [bOKlen, nFltLen] = getFltLen();
+	const auto [bOKlen, nFltLen] = io.getFltLen(input);
 	if (!bOKlen)
 		return retError();
 
-	auto getFltFreq = [&input]() {
-		bool bOK = true;
-		int nFltFreq = nFIRfreqDef, nFFTsz = nFFTszDef, nSR = nDefSampleRate, nMaxFIRfreq = nSR * 499 / 1000;
-		for (;;) {
-			if (input.cmdOptionExists("-sr")) {
-				const auto& param = input.getThisOption();
-				nSR = atoi(param.c_str());
-				if (nSR < nMinSampleRate || nSR > nMaxSampleRate) {
-					std::cout << "Error: sample rate must be between " << nMinSampleRate << " and " << nMaxSampleRate << '\n';
-					bOK = false; break;
-				}
-				nMaxFIRfreq = nSR * 499 / 1000;
-			}
-			auto checkFIRFreq = [nMaxFIRfreq](int freq) {
-				if (freq < nMinFIRfreq || freq > nMaxFIRfreq) {
-					std::cout << "Error: FIR filter frequency must be between " << nMinFIRfreq << " and " << nMaxFIRfreq << '\n';
-					return false;
-				}
-				return true;
-			};
-			auto checkFFTsize = [](const int nfft) {
-				bool bErr = (nfft < MIN_FFT_SIZE);
-				if (!bErr) {
-					int n = MIN_FFT_SIZE;
-					constexpr int nMax = std::numeric_limits<int>::max() / 2;
-					while (n < nfft && n < nMax)
-						n *= 2;
-					if (n != nfft)
-						bErr = true;
-				}
-				if (bErr) {
-					std::cout << "FFT size must be power of 2 and not less than " << MIN_FFT_SIZE << '\n';
-					return false;
-				}
-				return true;
-			};
-			if (input.cmdOptionExists("-fltfreq")) {
-				const auto& param = input.getThisOption();
-				const auto freq = atoi(param.c_str());
-				if (!checkFIRFreq(freq)) {
-					bOK = false; break;
-				}
-				nFltFreq = freq;
-			}
-			if (input.cmdOptionExists("-fft")) {
-				const auto& param = input.getThisOption();
-				const auto nfft = atoi(param.c_str());
-				if (!checkFFTsize(nfft)) {
-					bOK = false; break;
-				}
-				nFFTsz = nfft;
-			}
-			break;
-		}
-		return std::make_tuple(bOK, nSR, nFltFreq, nFFTsz);
-	};
-	const auto [bOKfreq, nSR, nFltFreq, nFFTsz] = getFltFreq();
+	const auto [bOKfreq, nSR, nFltFreq, nFFTsz] = io.getFltFreq(input);
 	if (!bOKfreq)
 		return retError();
 
-	if (input.cmdOptionExists("-width")) {
-		const auto& param = input.getThisOption();
-		const int width = atoi(param.c_str());
-		if (width >= MIN_IMG_DIM)
-			io.width = width;
-	}
-	if (input.cmdOptionExists("-height")) {
-		const auto& param = input.getThisOption();
-		const int height = atoi(param.c_str());
-		if (height >= MIN_IMG_DIM)
-			io.height = height;
-	}
-	if (input.cmdOptionExists("-dB"))
-		io.dB = true;
-	if (input.cmdOptionExists("-range")) {
-		const auto& param = input.getThisOption();
-		const int range = atoi(param.c_str());
-		if (range >= 10 && range <= 200)
-			io.dBrange = range;
-	}
-	if (input.cmdOptionExists("-top")) {
-		const auto& param = input.getThisOption();
-		const int top = atoi(param.c_str());
-		if (top > 0 && top <= 100)
-			io.dBtop = top;
-	}
-	if (input.cmdOptionExists("-exp")) {
-		const auto& param = input.getThisOption();
-		const int hz = atoi(param.c_str());
-		if (hz >= nMinExpFreq && hz <= nMaxExpFreq)
-			io.expHz = hz;
-	}
-	if (input.cmdOptionExists("-grid"))
-		io.drawGrid = true;
-	if (input.cmdOptionExists("-bw"))
-		io.BW = true;
-	if (input.cmdOptionExists("-gif"))
-		io.GIF = true;
-	if (input.cmdOptionExists("-delay") && io.width > 0) {
-		const auto& param = input.getThisOption();
-		const int ms = atoi(param.c_str());
-		if (ms > 0 && ms <= nMaxDelay)
-			io.nGIFdelay = ms;
-	}
+	io.getImgOptions(input);
 
 	std::string outfolder;
 
