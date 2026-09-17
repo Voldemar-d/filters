@@ -577,7 +577,7 @@ std::tuple<std::error_code, float, float> CAnalyzer::saveImpImage(CImgSaveHelper
 		const double kh = double(h), kr = 1.0 / (rMax - rMin);
 		int x1 = -1, y1 = -1;
 		if (n <= w) {
-			const double kn = 1.0 / double(n), dw = double(w);
+			const double kn = 1.0 / double(n - 1), dw = double(w);
 			for (int i = 0; i < n; i++) {
 				const int x = int(kn * double(i) * dw),
 					y = int(kh * (src[i] - rMin) * kr);
