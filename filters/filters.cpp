@@ -24,7 +24,8 @@ void printHelp(char** argv) {
 	std::cout << "-fltlp {N}\tgenerate low-pass FIR filter of {N} points length (127+ recommended)" << '\n';
 	std::cout << "-fltfreq {N}\tset {N} Hz frequency for low/high-pass FIR filter (must be less than half sample rate)" << '\n';
 	std::cout << "-fltwnd\t\tcalculate filter response with Kaiser windowing" << '\n';
-	std::cout << "-fft {N}\tset {N} minimal points in FFT transform used for drawing frequency response" << '\n';
+	std::cout << "-fltinv\t\tcalculate filter response using inverse FFT transform" << '\n';
+	std::cout << "-fft {N}\tset {N} minimal points in FFT transform used for calculating/drawing frequency response" << '\n';
 	std::cout << "-outfolder\tset output folder (will be created it doesn't exist) for saving image file(s)" << '\n';
 	std::cout << "-width {N}\tset width of output image file to {N} pixels (at least " << MIN_IMG_DIM << ")\n";
 	std::cout << "\tIMPORTANT: if width isn't specified then full response will be drawn" << '\n';
@@ -98,7 +99,7 @@ int main(int argc, char* argv[])
 		return retError();
 	}
 
-	const bool bKaiser = input.cmdOptionExists("-fltwnd"),
+	const bool bKaiser = input.cmdOptionExists("-fltwnd"), bInv = input.cmdOptionExists("-fltinv"),
 		bImp = input.cmdOptionExists("-imp");
 
 	std::list<std::pair<int, CFIRFilter>> lstFIR;
@@ -108,12 +109,20 @@ int main(int argc, char* argv[])
 		int nFLen = nFltLen;
 		for (int i = 0; i < io.nLenSteps; i++) {
 			lstFIR.push_back({});
-			lstFIR.back().first = nFLen;
 			auto& fir = lstFIR.back().second;
-			if (io.LPF)
-				fir.CalcLowPass(bKaiser, nFLen, nFltFreq, nSR, nFFTsz);
-			else
-				fir.CalcHighPass(bKaiser, nFLen, nFltFreq, nSR, nFFTsz);
+			if (io.LPF) {
+				if (bInv)
+					fir.InvLowHighPass<true>(bKaiser, nFLen, nFltFreq, nSR, nFFTsz);
+				else
+					fir.CalcLowPass(bKaiser, nFLen, nFltFreq, nSR, nFFTsz);
+			}
+			else {
+				if (bInv)
+					fir.InvLowHighPass<false>(bKaiser, nFLen, nFltFreq, nSR, nFFTsz);
+				else
+					fir.CalcHighPass(bKaiser, nFLen, nFltFreq, nSR, nFFTsz);
+			}
+			lstFIR.back().first = nFLen;
 			nFLen += io.nStepSize;
 		}
 	}

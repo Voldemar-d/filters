@@ -88,7 +88,8 @@ options can be:
 -fltlp {N}	generate low-pass FIR filter of {N} points length (127+ recommended)
 -fltfreq {N}	set {N} Hz frequency for low/high-pass FIR filter (must be less than half sample rate)
 -fltwnd		calculate filter response with Kaiser windowing
--fft {N}	set {N} minimal points in FFT transform used for drawing frequency response
+-fltinv		calculate filter response using inverse FFT transform
+-fft {N}	set {N} minimal points in FFT transform used for calculating/drawing frequency response
 -outfolder	set output folder (will be created it doesn't exist) for saving image file(s)
 -width {N}	set width of output image file to {N} pixels (at least 64)
 	IMPORTANT: if width isn't specified then full response will be drawn

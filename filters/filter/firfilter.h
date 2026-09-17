@@ -39,16 +39,6 @@ public:
 		else { // no Kaiser window
 			m_flt.resize(nLength);
 			KaiserLowHighPass<false>(m_flt.data(), nLength, double(nFreq) / double(nSampleRate), false);
-			/*
-			// inverse FFT
-			const int fftSz = initFFT(nLength, nFFTsz, false);
-			int i, j = (int)m_buf.size() - 2;
-			const int nF = int(double(m_buf.size()) * double(nFreq) / double(nSampleRate) + 0.5);
-			for (i = 0; i < nF; i += 2, j -= 2) {
-				m_buf[i] = m_buf[j] = 1.0f;
-			}
-			calcFilter(fftSz, nLength);
-			*/
 		}
 		return err;
 	}
@@ -62,16 +52,46 @@ public:
 		else { // no Kaiser window
 			m_flt.resize(nLength);
 			KaiserLowHighPass<false>(m_flt.data(), nLength, double(nFreq) / double(nSampleRate), true);
-			/*
-			// inverse FFT
-			const int fftSz = initFFT(nLength, nFFTsz, true);
-			int i, j = (int)m_buf.size() - 2;
-			const int nF = int(double(m_buf.size()) * double(nFreq) / double(nSampleRate) + 0.5);
-			for (i = 0; i <= nF; i += 2, j -= 2) {
-				m_buf[i] = m_buf[j] = 0;
+		}
+		return err;
+	}
+	// calculate filter using inverse FFT
+	template<bool bLowPass>
+	std::error_code InvLowHighPass(bool bKaiser, int& nLength, int nFreq, int nSampleRate, int nFFTsz = 0) {
+		auto err = CheckFreqLen(nLength, nFreq, nSampleRate);
+		if (err) return err;
+		int fftSz;
+		if constexpr (bLowPass)
+			fftSz = initFFT(nLength, nFFTsz, false);
+		else
+			fftSz = initFFT(nLength, nFFTsz, true);
+		int i, j = (int)m_buf.size() - 2;
+		const int nF = int(double(m_buf.size()) * double(nFreq) / double(nSampleRate));
+		for (i = 0; i <= nF; i += 2, j -= 2) {
+			if constexpr (bLowPass) {
+				m_buf[i] = m_buf[j] = 1.0f;
 			}
-			calcFilter(fftSz, nLength);
-			*/
+			else {
+				m_buf[i] = m_buf[j] = 0.0f;
+			}
+		}
+		calcFilter(fftSz, nLength);
+		if (bKaiser) { // apply Kaiser window
+			const int Np = nLength / 2; // (N-1)/2 for odd N
+			const auto [ni, beta, vb] = KaiserConst(Np);
+			double dk, alpha, y, t, w;
+			int i, j, k;
+			auto h = m_flt.data();
+			for (k = 0, i = j = Np; k <= Np; k++, i++, j--) {
+				dk = double(k);
+				alpha = dk * ni;
+				t = 1.0 - alpha * alpha;
+				if (t < 0) t = 0;
+				y = beta * sqrt(t);
+				w = vb * izero(y);
+				h[i] = float(h[i] * w);
+				h[j] = float(h[j] * w);
+			}
 		}
 		return err;
 	}
@@ -140,23 +160,23 @@ public:
 		return out;
 	}
 private:
+	std::tuple<double, double, double> KaiserConst(const int Np) const { // (N-1)/2 for odd N
+		const double ni = 1.0 / double(Np);
+		constexpr double att = 96.0;
+		double beta = 0;  // value of beta if att < 21
+		if constexpr (att >= 50)
+			beta = .1102 * (att - 8.71);
+		if constexpr (att < 50 && att >= 21)
+			beta = .5842 * pow((att - 21), 0.4) + .07886 * (att - 21);
+		const double vb = 1.0 / izero(beta);
+		return std::make_tuple(ni, beta, vb);
+	};
 	template<bool bKaiser>
 	int KaiserLowHighPass(float* h, int n, const double freq, const bool bHighPass) const
 	{
 		if (!(n % 2)) n--;
 		const int Np = n / 2; // (N-1)/2 for odd N
-		auto KaiserConst = [Np]() {
-			const double ni = 1.0 / double(Np);
-			constexpr double att = 96.0;
-			double beta = 0;  // value of beta if att < 21
-			if constexpr (att >= 50)
-				beta = .1102 * (att - 8.71);
-			if constexpr (att < 50 && att >= 21)
-				beta = .5842 * pow((att - 21), 0.4) + .07886 * (att - 21);
-			const double vb = 1.0 / izero(beta);
-			return std::make_tuple(ni, beta, vb);
-		};
-		const auto [ni, beta, vb] = KaiserConst();
+		const auto [ni, beta, vb] = KaiserConst(Np);
 		double alpha, y, t, ck, dk, w;
 		if (bHighPass) {
 			const int Np = n / 2;
@@ -226,16 +246,17 @@ private:
 			fsz >>= 1;
 		return fsz;
 	}
-	int initFFT(const int nLength, const int nFFTsz, const bool bHighPass) {
+	int initFFT(const int nLength, const int nFFTsz, const bool bFill1) {
 		const int fftSz = getFFTsize(std::max(nLength * 2, nFFTsz));
-		m_buf.resize((size_t)fftSz * 2, bHighPass ? 1.0f : 0);
+		m_buf.resize((size_t)fftSz * 2);
+		std::fill(m_buf.begin(), m_buf.end(), bFill1 ? 1.0f : 0.0f);
 		m_fft.SetSize(fftSz);
 		return fftSz;
 	}
 	void calcFilter(const int nFFTsz, const int firlen) {
 		auto data = m_buf.data();
 		m_fft.CDFTI(data);
-		double r = 1.0 / double(nFFTsz);
+		const double r = 1.0 / double(nFFTsz);
 		auto s1 = data;
 		m_flt.resize(firlen);
 		auto fh = m_flt.data();
