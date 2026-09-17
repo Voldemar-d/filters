@@ -574,17 +574,35 @@ std::tuple<std::error_code, float, float> CAnalyzer::saveImpImage(CImgSaveHelper
 		drawImpGrid(hDib, hFont, rMin, rMax, w, h, io.drawGrid);
 		const auto& src = imp;
 		const int n = (int)src.size();
-		const double nd = double(n), kw = 1.0 / double(w), nh = double(h), kr = 1.0 / (rMax - rMin);
-		int x1 = -1, y1 = -1, i1 = -1;
-		for (int x = 0; x < w; x++) {
-			const int index = int(nd * double(x) * kw),
-				y = int(nh * (src[index] - rMin) * kr);
-			if (0 == x) {
-				x1 = x; y1 = y; i1 = index;
+		const double kh = double(h), kr = 1.0 / (rMax - rMin);
+		int x1 = -1, y1 = -1;
+		if (n <= w) {
+			const double kn = 1.0 / double(n), dw = double(w);
+			for (int i = 0; i < n; i++) {
+				const int x = int(kn * double(i) * dw),
+					y = int(kh * (src[i] - rMin) * kr);
+				if (0 == x) {
+					x1 = x; y1 = y;
+				}
+				else {
+					ezd_line(hDib, x1, y1, x, y, m_clrLine);
+					x1 = x; y1 = y;
+				}
 			}
-			else if (index != i1) {
-				ezd_line(hDib, x1, y1, x, y, m_clrLine);
-				x1 = x; y1 = y; i1 = index;
+		}
+		else {
+			const double nd = double(n), kw = 1.0 / double(w);
+			int i1 = -1;
+			for (int x = 0; x < w; x++) {
+				const int index = int(nd * double(x) * kw),
+					y = int(kh * (src[index] - rMin) * kr);
+				if (0 == x) {
+					x1 = x; y1 = y; i1 = index;
+				}
+				else if (index != i1) {
+					ezd_line(hDib, x1, y1, x, y, m_clrLine);
+					x1 = x; y1 = y; i1 = index;
+				}
 			}
 		}
 		err = saveImage(is, io, hDib, hFont, w, h);
