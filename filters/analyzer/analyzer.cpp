@@ -581,7 +581,7 @@ std::tuple<std::error_code, float, float> CAnalyzer::saveImpImage(CImgSaveHelper
 			for (int i = 0; i < n; i++) {
 				const int x = int(kn * double(i) * dw),
 					y = int(kh * (src[i] - rMin) * kr);
-				if (0 == x) {
+				if (0 == i) {
 					x1 = x; y1 = y;
 				}
 				else {
