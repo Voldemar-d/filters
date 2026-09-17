@@ -260,11 +260,12 @@ private:
 		auto s1 = data;
 		m_flt.resize(firlen);
 		auto fh = m_flt.data();
-		fh[firlen / 2] = float((*s1) * r);
+		const int Np = firlen / 2; // (N-1)/2 for odd N
+		fh[Np] = float((*s1) * r);
 		s1 += 2;
-		float* d1 = fh + firlen / 2 - 1;
-		float* d2 = fh + firlen / 2 + 1;
-		for (int i = 0; i < firlen / 2; i++) {
+		auto d1 = fh + Np - 1;
+		auto d2 = fh + Np + 1;
+		for (int i = 0; i < Np; i++) {
 			*d1 = *d2 = float((*s1) * r);
 			d1--; d2++; s1 += 2;
 		}
