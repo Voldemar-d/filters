@@ -493,7 +493,7 @@ void CAnalyzer::drawAbsGrid(HEZDIMAGE hDib, HEZDFONT hFont, const float fmax, in
 	}
 }
 
-void CAnalyzer::drawImpGrid(HEZDIMAGE hDib, HEZDFONT hFont, const float fmin, const float fmax, int w, int h, bool bGrid) {
+void CAnalyzer::drawImpGrid(HEZDIMAGE hDib, HEZDFONT hFont, const int len, const float fmin, const float fmax, int w, int h, bool bGrid) {
 	if (!bGrid) return;
 	constexpr int n = 10;
 	constexpr auto dn = 1.0 / double(n);
@@ -523,11 +523,19 @@ void CAnalyzer::drawImpGrid(HEZDIMAGE hDib, HEZDFONT hFont, const float fmin, co
 		ezd_text_size(hFont, m_str, 0, &nW, &nH);
 		drawText(nH, hDib, hFont, m_str, 2, y, m_clrDb);
 	};
+	int yLen = 0;
 	for (int j = 0; j < n; j++) {
 		const int y = int(double(h) * (double(j) * dn - dV));
 		drawDotScale(hDib, w, h, 0, w, y, y, m_clrDot);
 		drawVal(y, j);
+		if (n - 1 == j)
+			yLen = y;
 	}
+	int nW = 0, nH = 0;
+	fmt::format_to(m_str, "{:d}{:c}", len, '\0');
+	ezd_text_size(hFont, m_str, 0, &nW, &nH);
+	if (nW < w - 2)
+		drawText(nH, hDib, hFont, m_str, w - nW - 4, yLen, m_clrDb);
 }
 
 void CAnalyzer::drawDotScale(HEZDIMAGE hDib, int w, int h, int x1, int x2, int y1, int y2, int nClr) const
@@ -571,9 +579,9 @@ std::tuple<std::error_code, float, float> CAnalyzer::saveImpImage(CImgSaveHelper
 		};
 		const auto [rMin, rMax] = respRange(imp, 1.05f);
 		rngMin = rMin; rngMax = rMax;
-		drawImpGrid(hDib, hFont, rMin, rMax, w, h, io.drawGrid);
 		const auto& src = imp;
 		const int n = (int)src.size();
+		drawImpGrid(hDib, hFont, n, rMin, rMax, w, h, io.drawGrid);
 		const double kh = double(h), kr = 1.0 / (rMax - rMin);
 		int x1 = -1, y1 = -1;
 		if (n <= w) {

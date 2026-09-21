@@ -79,7 +79,7 @@ protected:
 	int drawText(int nH, HEZDIMAGE hDib, HEZDFONT hFont, const char* pText, int x, int y, int x_col);
 	void drawdBScale(HEZDIMAGE hDib, HEZDFONT hFont, int w, int h, int nRange, int nTop, bool bGrid);
 	void drawAbsGrid(HEZDIMAGE hDib, HEZDFONT hFont, const float fmax, int w, int h, bool bGrid);
-	void drawImpGrid(HEZDIMAGE hDib, HEZDFONT hFont, const float fmin, const float fmax, int w, int h, bool bGrid);
+	void drawImpGrid(HEZDIMAGE hDib, HEZDFONT hFont, const int len, const float fmin, const float fmax, int w, int h, bool bGrid);
 	void drawDotScale(HEZDIMAGE hDib, int w, int h, int x1, int x2, int y1, int y2, int nClr = -1) const;
 	std::error_code getFullPath(const std::string& outfolder, std::string& filename) const;
 private:
