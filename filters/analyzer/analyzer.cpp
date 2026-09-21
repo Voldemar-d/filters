@@ -534,7 +534,7 @@ void CAnalyzer::drawImpGrid(HEZDIMAGE hDib, HEZDFONT hFont, const int len, const
 	int nW = 0, nH = 0;
 	fmt::format_to(m_str, "{:d}{:c}", len, '\0');
 	ezd_text_size(hFont, m_str, 0, &nW, &nH);
-	if (nW < w - 2)
+	if (nW < w - 4)
 		drawText(nH, hDib, hFont, m_str, w - nW - 4, yLen, m_clrDb);
 }
 
