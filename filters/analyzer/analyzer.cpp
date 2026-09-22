@@ -20,13 +20,27 @@ CImgSaveHelper::~CImgSaveHelper() {
 
 std::pair<std::error_code, std::string> CImgSaveHelper::nextFilename()
 {
-	const bool bIndex = (m_nIndex > -1), bMultiGIF = m_io.GIF && m_io.MultiGIF();
-	const int nFltLen = m_nFltLen + (bIndex && !bMultiGIF ? m_nIndex * m_io.nStepSize : 0);
+	const bool bIndex = (m_nIndex > -1), bMultiGIF = m_io.GIF && m_io.MultiGIF(),
+		bStepByFreq = m_io.StepByFreq();
+	const int nFltLen = m_nFltLen + (bIndex && !bMultiGIF && !bStepByFreq ? m_nIndex * m_io.nStepSize : 0),
+		nFltFreq = m_nFltFreq + (bIndex && !bMultiGIF && bStepByFreq ? m_nIndex * m_io.nStepSize : 0);
 	auto fname = fmt::format("{:s}_", m_io.LPF ? "LowPass" : "HighPass");
 	if (!bIndex)
-		fname += fmt::format("{:d}pt_{:d}hz", nFltLen, m_nFltFreq);
-	else
-		fname += fmt::format("{:d}hz", m_nFltFreq);
+		fname += fmt::format("{:d}pt_{:d}hz", nFltLen, nFltFreq);
+	else {
+		if (bMultiGIF) {
+			if (bStepByFreq)
+				fname += fmt::format("{:d}-{:d}hz_{:d}", nFltFreq, nFltFreq + (m_io.nFreqSteps - 1) * m_io.nStepSize, m_io.nFreqSteps);
+			else
+				fname.erase(fname.begin() + fname.size() - 1);
+		}
+		else {
+			if (bStepByFreq)
+				fname.erase(fname.begin() + fname.size() - 1);
+			else
+				fname += fmt::format("{:d}hz", nFltFreq);
+		}
+	}
 	if (m_nFFTsz > 0) {
 		fname += fmt::format("_fft{:d}", m_nFFTsz);
 		fname += m_io.Exp() ? "_exp" : "_lin";
@@ -38,10 +52,18 @@ std::pair<std::error_code, std::string> CImgSaveHelper::nextFilename()
 	if (m_io.BW)
 		fname += "_BW";
 	if (bIndex) {
-		if (bMultiGIF)
-			fname += fmt::format("_{:d}-{:d}pt_{:d}", nFltLen, nFltLen + (m_io.nLenSteps - 1) * m_io.nStepSize, m_io.nLenSteps);
-		else
-			fname += fmt::format("_{:d}pt_{:04d}", nFltLen, m_nIndex + 1);
+		if (bMultiGIF) {
+			if (bStepByFreq)
+				fname += fmt::format("_{:d}pt", nFltLen);
+			else
+				fname += fmt::format("_{:d}-{:d}pt_{:d}", nFltLen, nFltLen + (m_io.nLenSteps - 1) * m_io.nStepSize, m_io.nLenSteps);
+		}
+		else {
+			if (bStepByFreq)
+				fname += fmt::format("_{:d}pt_{:d}hz_{:04d}", nFltLen, nFltFreq, m_nIndex + 1);
+			else
+				fname += fmt::format("_{:d}pt_{:04d}", nFltLen, m_nIndex + 1);
+		}
 	}
 	fname += m_io.GIF ? ".gif" : ".bmp";
 	const auto err = getFullPath(m_outfolder, fname);
@@ -147,7 +169,7 @@ std::error_code CAnalyzer::saveImage(CImgSaveHelper& is, const imgOptions& io, H
 	return err;
 }
 
-std::error_code CAnalyzer::saveFRImage(CImgSaveHelper& is, const imgOptions& io, int nSampleRate, int nFreq)
+std::error_code CAnalyzer::saveFRImage(CImgSaveHelper& is, const imgOptions& io, const int nSampleRate, const int nFreq)
 {
 	auto err = std::make_error_code(std::errc::permission_denied);
 	const auto [bOK, bFull, w, h, hDib, hFont] = initImage(io, m_fdata);
@@ -202,10 +224,6 @@ std::error_code CAnalyzer::saveFRImage(CImgSaveHelper& is, const imgOptions& io,
 				for (j = jlast + 1; j < n; j++)
 					std::get<3>(m_expdraw[j]) = bUp ? dmax : dmin;
 			}
-			if (io.dB) // draw in decibels
-				drawExp<true>(io, m_expdraw, fmax, nFreq, nSampleRate, w, h, dx, hDib, hFont);
-			else // draw absolute values
-				drawExp<false>(io, m_expdraw, fmax, nFreq, nSampleRate, w, h, dx, hDib, hFont);
 			for (i = 0; i < w; i++) {
 				if (0 == i)
 					drawFreq(hDib, hFont, 0, w, h, nSampleRate, 0, io.drawGrid);
@@ -214,6 +232,10 @@ std::error_code CAnalyzer::saveFRImage(CImgSaveHelper& is, const imgOptions& io,
 					drawFreq(hDib, hFont, i, w, h, nSampleRate, nHz, io.drawGrid);
 				}
 			}
+			if (io.dB) // draw in decibels
+				drawExp<true>(io, m_expdraw, fmax, nFreq, nSampleRate, w, h, dx, hDib, hFont);
+			else // draw absolute values
+				drawExp<false>(io, m_expdraw, fmax, nFreq, nSampleRate, w, h, dx, hDib, hFont);
 			drawFreq(hDib, hFont, w, w, h, nSampleRate, 0, io.drawGrid);
 		}
 		else { // linear frequency scale
@@ -276,7 +298,7 @@ void CAnalyzer::saveGIF(CImgSaveHelper& is, const imgOptions& io, HEZDIMAGE hDib
 		*refWriter = pgw;
 	}
 	if (nullptr == pgw) return;
-	if (is.first())
+	if (is.first() || !io.MultiGIF())
 		GifBegin(pgw.get(), is.curFile().c_str(), w, h, io.nGIFdelay);
 	const auto pData = ((uint8_t*)hDib) + ezd_header_size() - 4;
 	// vertical flip the image and convert BGRA => RGBA
@@ -514,20 +536,22 @@ void CAnalyzer::drawImpGrid(HEZDIMAGE hDib, HEZDFONT hFont, const int len, const
 		return std::make_pair(frng, dV);
 	};
 	const auto [frng, dV] = getdV();
-	auto drawVal = [this, &hDib, &hFont, fmin, frng, dV, n](int y, const int j) {
+	auto drawVal = [this, &hDib, &hFont, fmin, frng, dV, n, h](int y, const int j) {
 		int nW = 0, nH = 0;
 		const double v = fmin - dV + frng * double(j) / double(n);
 		fmt::format_to(m_str, "{:.2f}{:c}", v, '\0');
 		if ('-' == m_str[0] && 0 == atof(m_str))
 			fmt::format_to(m_str, "{:.2f}{:c}", 0.0, '\0');
 		ezd_text_size(hFont, m_str, 0, &nW, &nH);
+		y = std::min(y, h - nH * 2);
 		drawText(nH, hDib, hFont, m_str, 2, y, m_clrDb);
+		return y;
 	};
 	int yLen = 0;
 	for (int j = 0; j < n; j++) {
-		const int y = int(double(h) * (double(j) * dn - dV));
+		int y = int(double(h) * (double(j) * dn - dV));
 		drawDotScale(hDib, w, h, 0, w, y, y, m_clrDot);
-		drawVal(y, j);
+		y = drawVal(y, j);
 		if (n - 1 == j)
 			yLen = y;
 	}

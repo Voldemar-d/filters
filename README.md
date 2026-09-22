@@ -67,13 +67,25 @@ Images with series of responses can be saved to multi-frame GIF files if delay b
 HighPass_5000hz_fft4096_exp_dB_wnd_127-415pt_10.gif
 HighPass_5000hz_imp_wnd_127-415pt_10.gif
 </pre>
-'127-415pt_10' means series of 10 filters with length from 127 to 415 points.
+`127-415pt_10` means series of 10 filters with length from 127 to 415 points.
+
+You gan alse generate series of FIR filter responses with filter cutoff frequency increasing from specified one with specified step. Every frequency and/or impulse response are saved to a separate image file with image number at the end of filename, e.g.:
+<pre>
+HighPass_fft4096_exp_dB_wnd_127pt_5900hz_0010.gif
+HighPass_imp_wnd_127pt_5900hz_0010.gif
+</pre>
+Images with series of responses can be saved to multi-frame GIF files if delay between frames is specified (in 1/100th sec), e.g:
+<pre>
+HighPass_5000-5900hz_10_fft4096_exp_dB_wnd_127pt.gif
+HighPass_5000-5900hz_10_imp_wnd_127pt.gif
+</pre>
+`5000-5900hz_10` means series of 10 filters with frequency from 5000 to 5900 Hz.
 
 ### Processing audio file
 
 You can also process audio stored in a WAV file with generated filter and save the result to output folder to WAV file with the same filename. All audio channels in the file are processed.
 
-**IMPORTANT**: entire audio file is loaded and processed in memory, use this with care.
+**IMPORTANT**: entire audio file is loaded and processed in memory (because of used `AudioFile` library), use this with care.
 
 If series of filters is generated, only first filter is used for processing audio file.  
 
@@ -103,10 +115,12 @@ options can be:
 -bw		draw image in black and white (color by default)
 -gif		save to GIF (color only) instead of BMP
 -imp		save separate image with impulse response of generated filter
--stepsize {K}	set step of filter length to K points (must be even)
--lensteps {N}	generate N filters with length increasing with step of K points
-	IMPORTANT: series of filters is generated only if N > 1 and K > 1 (must be even)
--delay {N}	save series of filters to multi-frame GIF with delay in 1/100th sec (must be > 0)
+-stepsize {K}	set filter length step to K points (must be even) or frequency step to K Hz
+-lensteps {N}	generate N filters with length increasing with N points step
+	IMPORTANT: series of filters by length is generated only if N > 1 and K > 1 (must be even)
+-freqsteps {M}	generate M filters with frequency increasing with K Hz step
+	IMPORTANT: series of filters by frequency is generated only if M > 1 and K > 0
+-delay {D}	save series of filters to multi-frame GIF with delay in 1/100th sec (D must be > 0)
 	IMPORTANT: multi-frame GIF is saved only if width is specified
 -wav {infile}	load WAV file, process with generated filter and save result to output folder
 </pre>
@@ -121,13 +135,22 @@ filters.exe -outfolder D:\tmp\flt -gif -flthp 255 -fltfreq 5000 -dB -top 10 -ran
 Saves frequency response of high-pass filter of 255 points length and 5000 Hz cutoff frequency to a GIF file in `D:\tmp\flt` folder, using linear frequency scale, displaying values in decibels (top at 10 dB, range 100 dB) with grid on the image of 800 pixels height. Width is determined by full length of resulting frequency response.
 Also reads audio data from file `D:\audio\test.wav`, processes it with calculated filter and saves result to output folder as `D:\tmp\test.wav`
 <pre>
-filters.exe -outfolder D:\tmp\flt -flthp 127 -fltfreq 5000 -fltwnd -exp 100 -dB -top 10 -range 200 -grid -height 400 -width 600 -imp -lensteps 10 -stepsize 32 -wav D:\tmp\Sweep.wav -delay 50 -gif
+filters.exe -outfolder D:\tmp\flt -flthp 127 -fltfreq 5000 -fltwnd -exp 100 -dB -top 10 -range 200 -grid -height 400 -width 600 -imp -lensteps 10 -stepsize 32 -wav D:\audio\test.wav -delay 50 -gif
 </pre>
 Saves series of 10 frequency and impulse responses of high-pass filter starting from 127 points length and 5000 Hz cutoff frequency to multi-frame GIF files in `D:\tmp\flt` folder, using exponential frequency scale, displaying values in decibels (top at 10 dB, range 200 dB) with grid on the image of 400 pixels height and 600 pixels width. Also reads audio data from file `D:\audio\test.wav`, processes it with 1st calculated filter and saves result to output folder as `D:\tmp\test.wav`
 
 Resulting image with impulse response:
 
 ![image](hp.gif)
+
+<pre>
+filters.exe -flthp 127 -fltfreq 5000 -fltwnd -fft 4096 -outfolder D:\tmp\flt -exp 100 -dB -top 10 -range 200 -grid -height 400 -width 600 -imp -freqsteps 10 -stepsize 100 -delay 50 -gif
+</pre>
+Saves series of 10 frequency and impulse responses of 127-point high-pass filter with cufoff frequency starting from 5000 Hz to multi-frame GIF files in `D:\tmp\flt` folder, using exponential frequency scale, FFT with 4096 points size, displaying values in decibels (top at 10 dB, range 200 dB) with grid on the image of 400 pixels height and 600 pixels width.
+
+Resulting image with frequency response:
+
+![image](hpf.gif)
 
 ## External libraries
 

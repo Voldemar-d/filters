@@ -1,6 +1,6 @@
 #include "options.h"
 
-constexpr int nFIRfreqDef = 1000, nMinFIRfreq = 10, nFFTszDef = 4096, nMaxDelay = 9999;
+constexpr int nFltFreqDef = 1000, nMinFltFreq = 10, nFFTszDef = 4096, nMaxDelay = 9999;
 
 std::pair<bool, int> imgOptions::getFltLen(const InputParser& input) {
 	bool bOK = true; int nFltLen = 0;
@@ -40,14 +40,18 @@ std::pair<bool, int> imgOptions::getFltLen(const InputParser& input) {
 			const auto& param = input.getThisOption();
 			nLenSteps = atoi(param.c_str());
 		}
+		if (input.cmdOptionExists("-freqsteps")) {
+			const auto& param = input.getThisOption();
+			nFreqSteps = atoi(param.c_str());
+		}
 		CheckLenSteps();
 	}
 	return std::make_pair(bOK, nFltLen);
 }
 
-std::tuple<bool, int, int, int> imgOptions::getFltFreq(const InputParser& input) {
+std::tuple<bool, int, int, int, int> imgOptions::getFltFreq(const InputParser& input) {
 	bool bOK = true;
-	int nFltFreq = nFIRfreqDef, nFFTsz = nFFTszDef, nSR = DEF_SAMPLE_RATE, nMaxFIRfreq = nSR * 499 / 1000;
+	int nFltFreq = nFltFreqDef, nFFTsz = nFFTszDef, nSR = DEF_SAMPLE_RATE, nMaxFltFreq = nSR * 499 / 1000;
 	for (;;) {
 		if (input.cmdOptionExists("-sr")) {
 			const auto& param = input.getThisOption();
@@ -56,11 +60,11 @@ std::tuple<bool, int, int, int> imgOptions::getFltFreq(const InputParser& input)
 				std::cout << "Error: sample rate must be between " << MIN_SAMPLE_RATE << " and " << MAX_SAMPLE_RATE << '\n';
 				bOK = false; break;
 			}
-			nMaxFIRfreq = nSR * 499 / 1000;
+			nMaxFltFreq = nSR * 499 / 1000;
 		}
-		auto checkFIRFreq = [nMaxFIRfreq](int freq) {
-			if (freq < nMinFIRfreq || freq > nMaxFIRfreq) {
-				std::cout << "Error: FIR filter frequency must be between " << nMinFIRfreq << " and " << nMaxFIRfreq << '\n';
+		auto checkFIRFreq = [nMaxFltFreq](int freq) {
+			if (freq < nMinFltFreq || freq > nMaxFltFreq) {
+				std::cout << "Error: FIR filter frequency must be between " << nMinFltFreq << " and " << nMaxFltFreq << '\n';
 				return false;
 			}
 			return true;
@@ -99,7 +103,11 @@ std::tuple<bool, int, int, int> imgOptions::getFltFreq(const InputParser& input)
 		}
 		break;
 	}
-	return std::make_tuple(bOK, nSR, nFltFreq, nFFTsz);
+	if (nLenSteps < 2)
+		nLenSteps = 1;
+	if (nFreqSteps < 2)
+		nFreqSteps = 1;
+	return std::make_tuple(bOK, nSR, nFltFreq, nMaxFltFreq, nFFTsz);
 }
 
 void imgOptions::getImgOptions(const InputParser& input) {

@@ -32,7 +32,7 @@ public:
 	CImgSaveHelper(const imgOptions& io, const std::string& outfolder, const bool bWnd, const int nFltFreq, const int nFltLen)
 		: m_io(io), m_outfolder(outfolder), m_bWnd(bWnd), m_nFltFreq(nFltFreq), m_nFltLen(nFltLen)
 	{
-		if (io.nLenSteps > 1)
+		if (io.nLenSteps > 1 || io.nFreqSteps > 1)
 			m_nIndex = 0;
 	}
 	~CImgSaveHelper();
@@ -41,7 +41,9 @@ public:
 	}
 	std::pair<std::error_code, std::string> nextFilename();
 	bool first() const { return m_nIndex < 2; }
-	bool last() const { return (m_nIndex < 0 || m_nIndex >= m_io.nLenSteps); }
+	bool last() const {
+		return (m_nIndex < 0 || (m_io.nLenSteps > 1 && m_nIndex >= m_io.nLenSteps) || (m_io.nFreqSteps > 1 && m_nIndex >= m_io.nFreqSteps));
+	}
 	auto& curFile() const { return m_curFile; }
 	auto getWriter() { return &m_pGIFwriter; }
 protected:
@@ -60,7 +62,7 @@ class CAnalyzer {
 public:
 	CAnalyzer() {}
 	size_t GetRespFIR(const int nFFTmin, const int nSamples, const std::vector<float>& data);
-	std::error_code saveFRImage(CImgSaveHelper& is, const imgOptions& io, int nSampleRate, int nFreq);
+	std::error_code saveFRImage(CImgSaveHelper& is, const imgOptions& io, const int nSampleRate, const int nFreq);
 	std::tuple<std::error_code, float, float> saveImpImage(CImgSaveHelper& is, const imgOptions& io, const std::vector<float>& imp,
 		const bool bCalcRange = true, float rngMin = 0.0f, float rngMax = 0.0f);
 protected:
@@ -81,7 +83,6 @@ protected:
 	void drawAbsGrid(HEZDIMAGE hDib, HEZDFONT hFont, const float fmax, int w, int h, bool bGrid);
 	void drawImpGrid(HEZDIMAGE hDib, HEZDFONT hFont, const int len, const float fmin, const float fmax, int w, int h, bool bGrid);
 	void drawDotScale(HEZDIMAGE hDib, int w, int h, int x1, int x2, int y1, int y2, int nClr = -1) const;
-	std::error_code getFullPath(const std::string& outfolder, std::string& filename) const;
 private:
 	TFFTF m_fft;
 	// filter's impulse response values before FFT

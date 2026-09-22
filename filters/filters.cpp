@@ -39,10 +39,12 @@ void printHelp(char** argv) {
 	std::cout << "-bw\t\tdraw image in black and white (color by default)" << '\n';
 	std::cout << "-gif\t\tsave to GIF (color only) instead of BMP" << '\n';
 	std::cout << "-imp\t\tsave separate image with impulse response of generated filter" << '\n';
-	std::cout << "-stepsize {K}\tset step of filter length to K points (must be even)" << '\n';
-	std::cout << "-lensteps {N}\tgenerate N filters with length increasing with step of K points" << '\n';
-	std::cout << "\tIMPORTANT: series of filters is generated only if N > 1 and K > 1 (must be even)" << '\n';
-	std::cout << "-delay {N}\tsave series of filters to multi-frame GIF with delay in 1/100th sec (must be > 0)" << '\n';
+	std::cout << "-stepsize {K}\tset filter length step to K points (must be even) or frequency step to K Hz" << '\n';
+	std::cout << "-lensteps {N}\tgenerate N filters with length increasing with N points step" << '\n';
+	std::cout << "\tIMPORTANT: series of filters by length is generated only if N > 1 and K > 1 (must be even)" << '\n';
+	std::cout << "-freqsteps {M}\tgenerate M filters with frequency increasing with K Hz step" << '\n';
+	std::cout << "\tIMPORTANT: series of filters by frequency is generated only if M > 1 and K > 0" << '\n';
+	std::cout << "-delay {D}\tsave series of filters to multi-frame GIF with delay in 1/100th sec (D must be > 0)" << '\n';
 	std::cout << "\tIMPORTANT: multi-frame GIF is saved only if width is specified" << '\n';
 	std::cout << "-wav {infile}\tload WAV file, process with generated filter and save result to output folder" << '\n';
 }
@@ -78,7 +80,7 @@ int main(int argc, char* argv[])
 	if (!bOKlen)
 		return retError();
 
-	const auto [bOKfreq, nSR, nFltFreq, nFFTsz] = io.getFltFreq(input);
+	const auto [bOKfreq, nSR, nFltFreq, nMaxFltFreq, nFFTsz] = io.getFltFreq(input);
 	if (!bOKfreq)
 		return retError();
 
@@ -102,28 +104,38 @@ int main(int argc, char* argv[])
 	const bool bKaiser = input.cmdOptionExists("-fltwnd"), bInv = input.cmdOptionExists("-fltinv"),
 		bImp = input.cmdOptionExists("-imp");
 
-	std::list<std::pair<int, CFIRFilter>> lstFIR;
-	if (io.nLenSteps < 2)
-		io.nLenSteps = 1;
+	std::list<std::tuple<int, int, CFIRFilter>> lstFIR;
 	{
-		int nFLen = nFltLen;
-		for (int i = 0; i < io.nLenSteps; i++) {
+		int nFLen = nFltLen, nFreq = nFltFreq;
+		const bool bStepByFreq = io.StepByFreq();
+		const int nSteps = bStepByFreq ? io.nFreqSteps : io.nLenSteps;
+		for (int i = 0; i < nSteps; i++) {
 			lstFIR.push_back({});
-			auto& fir = lstFIR.back().second;
+			auto& [flen, freq, fir] = lstFIR.back();
 			if (io.LPF) {
 				if (bInv)
-					fir.InvLowHighPass<true>(bKaiser, nFLen, nFltFreq, nSR, nFFTsz);
+					fir.InvLowHighPass<true>(bKaiser, nFLen, nFreq, nSR, nFFTsz);
 				else
-					fir.CalcLowPass(bKaiser, nFLen, nFltFreq, nSR, nFFTsz);
+					fir.CalcLowPass(bKaiser, nFLen, nFreq, nSR, nFFTsz);
 			}
 			else {
 				if (bInv)
-					fir.InvLowHighPass<false>(bKaiser, nFLen, nFltFreq, nSR, nFFTsz);
+					fir.InvLowHighPass<false>(bKaiser, nFLen, nFreq, nSR, nFFTsz);
 				else
-					fir.CalcHighPass(bKaiser, nFLen, nFltFreq, nSR, nFFTsz);
+					fir.CalcHighPass(bKaiser, nFLen, nFreq, nSR, nFFTsz);
 			}
-			lstFIR.back().first = nFLen;
-			nFLen += io.nStepSize;
+			flen = nFLen;
+			freq = nFreq;
+			if (bStepByFreq) {
+				nFreq += io.nStepSize;
+				if (nFreq > nMaxFltFreq)
+					break;
+			}
+			else {
+				nFLen += io.nStepSize;
+				if (nFLen > MAX_FIR_LENGTH)
+					break;
+			}
 		}
 	}
 	CAnalyzer an; bool bOK = true;
@@ -136,7 +148,7 @@ int main(int argc, char* argv[])
 		CImgSaveHelper is(io, outfolder, bKaiser, nFltFreq, nFltLen);
 		float rngMin = 0, rngMax = 0;
 		bool bFirst = true;
-		for (auto const& [nFLen, fir] : lstFIR) {
+		for (auto const& [nFLen, nFreq, fir] : lstFIR) {
 			const auto [err, rMin, rMax] = an.saveImpImage(is, io, fir.GetFilter(), bFirst, rngMin, rngMax);
 			if (err) {
 				imgFailed(is.curFile(), err);
@@ -152,11 +164,11 @@ int main(int argc, char* argv[])
 		return retError();
 	// save frequency response image(s)
 	CImgSaveHelper is(io, outfolder, bKaiser, nFltFreq, nFltLen);
-	for (auto const& [nFLen, fir] : lstFIR) {
+	for (auto const& [nFLen, nFreq, fir] : lstFIR) {
 		const auto& flt = fir.GetFilter();
 		const auto fsz = an.GetRespFIR(nFFTsz, (int)flt.size(), flt);
 		is.SetFFTsz(fsz);
-		const auto err = an.saveFRImage(is, io, nSR, nFltFreq);
+		const auto err = an.saveFRImage(is, io, nSR, nFreq);
 		if (err) {
 			imgFailed(is.curFile(), err);
 			break;
@@ -198,7 +210,7 @@ int main(int argc, char* argv[])
 	const auto nASR = audioFile.getSampleRate();
 	const int numChannels = audioFile.getNumChannels(), numSamples = audioFile.getNumSamplesPerChannel();
 
-	const auto& fir = lstFIR.front().second;
+	const auto& fir = std::get<2>(lstFIR.front());
 
 	std::vector<CFIRFilter> lstAFIR; lstAFIR.reserve(numChannels);
 	for (int i = 0; i < numChannels; i++)
