@@ -164,14 +164,20 @@ int main(int argc, char* argv[])
 		return retError();
 	// save frequency response image(s)
 	CImgSaveHelper is(io, outfolder, bKaiser, nFltFreq, nFltLen);
+	float rngMax = 0.0f;
+	bool bFirst = true;
 	for (auto const& [nFLen, nFreq, fir] : lstFIR) {
 		const auto& flt = fir.GetFilter();
 		const auto fsz = an.GetRespFIR(nFFTsz, (int)flt.size(), flt);
 		is.SetFFTsz(fsz);
-		const auto err = an.saveFRImage(is, io, nSR, nFreq);
+		const auto [err, rMax] = an.saveFRImage(is, io, nSR, nFreq, (bKaiser || io.dB) ? -1.0f : rngMax);
 		if (err) {
 			imgFailed(is.curFile(), err);
 			break;
+		}
+		if (bFirst) {
+			rngMax = rMax;
+			bFirst = false;
 		}
 	}
 	if (!bOK)

@@ -169,7 +169,7 @@ std::error_code CAnalyzer::saveImage(CImgSaveHelper& is, const imgOptions& io, H
 	return err;
 }
 
-std::error_code CAnalyzer::saveFRImage(CImgSaveHelper& is, const imgOptions& io, const int nSampleRate, const int nFreq)
+std::pair<std::error_code, float> CAnalyzer::saveFRImage(CImgSaveHelper& is, const imgOptions& io, const int nSampleRate, const int nFreq, float rngMax)
 {
 	auto err = std::make_error_code(std::errc::permission_denied);
 	const auto [bOK, bFull, w, h, hDib, hFont] = initImage(io, m_fdata);
@@ -182,6 +182,15 @@ std::error_code CAnalyzer::saveFRImage(CImgSaveHelper& is, const imgOptions& io,
 		float dmin = 0, dmax = 0, fmax = 0.0f;
 		// current graph direction
 		bool bUp = true;
+
+		auto checkRngMax = [&fmax, &rngMax]() {
+			if (rngMax > 0.5)
+				fmax = rngMax;
+			else if (rngMax > -1.0f) {
+				rngMax = fmax * 1.1f;
+				fmax = rngMax;
+			}
+		};
 
 		if (io.Exp()) { // exponential frequency scale
 			const double dfmin = double(io.expHz),
@@ -232,6 +241,7 @@ std::error_code CAnalyzer::saveFRImage(CImgSaveHelper& is, const imgOptions& io,
 					drawFreq(hDib, hFont, i, w, h, nSampleRate, nHz, io.drawGrid);
 				}
 			}
+			checkRngMax();
 			if (io.dB) // draw in decibels
 				drawExp<true>(io, m_expdraw, fmax, nFreq, nSampleRate, w, h, dx, hDib, hFont);
 			else // draw absolute values
@@ -269,6 +279,7 @@ std::error_code CAnalyzer::saveFRImage(CImgSaveHelper& is, const imgOptions& io,
 					fmax = std::max(fmax, dmax);
 				}
 			}
+			checkRngMax();
 			if (io.dB) // draw in decibels
 				drawLinear<true>(io, draw, fmax, nFreq, nSampleRate, w, h, dx, hDib, hFont);
 			else // draw absolute values
@@ -278,7 +289,7 @@ std::error_code CAnalyzer::saveFRImage(CImgSaveHelper& is, const imgOptions& io,
 
 		err = saveImage(is, io, hDib, hFont, w, h);
 	}
-	return err;
+	return { err, rngMax };
 }
 
 void CAnalyzer::saveGIF(CImgSaveHelper& is, const imgOptions& io, HEZDIMAGE hDib, const int w, const int h) const

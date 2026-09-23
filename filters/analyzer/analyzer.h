@@ -62,7 +62,7 @@ class CAnalyzer {
 public:
 	CAnalyzer() {}
 	size_t GetRespFIR(const int nFFTmin, const int nSamples, const std::vector<float>& data);
-	std::error_code saveFRImage(CImgSaveHelper& is, const imgOptions& io, const int nSampleRate, const int nFreq);
+	std::pair<std::error_code, float> saveFRImage(CImgSaveHelper& is, const imgOptions& io, const int nSampleRate, const int nFreq, float rngMax = -1.0f);
 	std::tuple<std::error_code, float, float> saveImpImage(CImgSaveHelper& is, const imgOptions& io, const std::vector<float>& imp,
 		const int nFreq, const bool bCalcRange = true, float rngMin = 0.0f, float rngMax = 0.0f);
 protected:
