@@ -64,7 +64,7 @@ public:
 	size_t GetRespFIR(const int nFFTmin, const int nSamples, const std::vector<float>& data);
 	std::error_code saveFRImage(CImgSaveHelper& is, const imgOptions& io, const int nSampleRate, const int nFreq);
 	std::tuple<std::error_code, float, float> saveImpImage(CImgSaveHelper& is, const imgOptions& io, const std::vector<float>& imp,
-		const bool bCalcRange = true, float rngMin = 0.0f, float rngMax = 0.0f);
+		const int nFreq, const bool bCalcRange = true, float rngMin = 0.0f, float rngMax = 0.0f);
 protected:
 	size_t getFFTsize(size_t nSamples, bool bUp) const;
 	std::pair<int, double> CalcResp(const size_t fsz);
@@ -81,7 +81,7 @@ protected:
 	int drawText(int nH, HEZDIMAGE hDib, HEZDFONT hFont, const char* pText, int x, int y, int x_col);
 	void drawdBScale(HEZDIMAGE hDib, HEZDFONT hFont, int w, int h, int nRange, int nTop, bool bGrid);
 	void drawAbsGrid(HEZDIMAGE hDib, HEZDFONT hFont, const float fmax, int w, int h, bool bGrid);
-	void drawImpGrid(HEZDIMAGE hDib, HEZDFONT hFont, const int len, const float fmin, const float fmax, int w, int h, bool bGrid);
+	void drawImpGrid(HEZDIMAGE hDib, HEZDFONT hFont, const int len, const int freq, const float fmin, const float fmax, int w, int h, bool bGrid);
 	void drawDotScale(HEZDIMAGE hDib, int w, int h, int x1, int x2, int y1, int y2, int nClr = -1) const;
 private:
 	TFFTF m_fft;

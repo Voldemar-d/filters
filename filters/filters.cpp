@@ -149,7 +149,7 @@ int main(int argc, char* argv[])
 		float rngMin = 0, rngMax = 0;
 		bool bFirst = true;
 		for (auto const& [nFLen, nFreq, fir] : lstFIR) {
-			const auto [err, rMin, rMax] = an.saveImpImage(is, io, fir.GetFilter(), bFirst, rngMin, rngMax);
+			const auto [err, rMin, rMax] = an.saveImpImage(is, io, fir.GetFilter(), nFreq, bFirst, rngMin, rngMax);
 			if (err) {
 				imgFailed(is.curFile(), err);
 				break;

@@ -515,7 +515,7 @@ void CAnalyzer::drawAbsGrid(HEZDIMAGE hDib, HEZDFONT hFont, const float fmax, in
 	}
 }
 
-void CAnalyzer::drawImpGrid(HEZDIMAGE hDib, HEZDFONT hFont, const int len, const float fmin, const float fmax, int w, int h, bool bGrid) {
+void CAnalyzer::drawImpGrid(HEZDIMAGE hDib, HEZDFONT hFont, const int len, const int freq, const float fmin, const float fmax, int w, int h, bool bGrid) {
 	if (!bGrid) return;
 	constexpr int n = 10;
 	constexpr auto dn = 1.0 / double(n);
@@ -547,19 +547,29 @@ void CAnalyzer::drawImpGrid(HEZDIMAGE hDib, HEZDFONT hFont, const int len, const
 		drawText(nH, hDib, hFont, m_str, 2, y, m_clrDb);
 		return y;
 	};
-	int yLen = 0;
+	int yFreq = -1, yLen = -1;
 	for (int j = 0; j < n; j++) {
 		int y = int(double(h) * (double(j) * dn - dV));
 		drawDotScale(hDib, w, h, 0, w, y, y, m_clrDot);
 		y = drawVal(y, j);
-		if (n - 1 == j)
+		if (0 == j)
+			yFreq = y;
+		else if (n - 1 == j)
 			yLen = y;
 	}
 	int nW = 0, nH = 0;
-	fmt::format_to(m_str, "{:d}{:c}", len, '\0');
-	ezd_text_size(hFont, m_str, 0, &nW, &nH);
-	if (nW < w - 4)
-		drawText(nH, hDib, hFont, m_str, w - nW - 4, yLen, m_clrDb);
+	if (yFreq > -1) {
+		fmt::format_to(m_str, "{:d} Hz{:c}", freq, '\0');
+		ezd_text_size(hFont, m_str, 0, &nW, &nH);
+		if (nW < w - 4)
+			drawText(nH, hDib, hFont, m_str, w - nW - 4, yFreq, m_clrDb);
+	}
+	if (yLen > 0) {
+		fmt::format_to(m_str, "{:d}{:c}", len, '\0');
+		ezd_text_size(hFont, m_str, 0, &nW, &nH);
+		if (nW < w - 4)
+			drawText(nH, hDib, hFont, m_str, w - nW - 4, yLen, m_clrDb);
+	}
 }
 
 void CAnalyzer::drawDotScale(HEZDIMAGE hDib, int w, int h, int x1, int x2, int y1, int y2, int nClr) const
@@ -582,7 +592,7 @@ void CAnalyzer::drawDotScale(HEZDIMAGE hDib, int w, int h, int x1, int x2, int y
 }
 
 std::tuple<std::error_code, float, float> CAnalyzer::saveImpImage(CImgSaveHelper& is, const imgOptions& io, const std::vector<float>& imp,
-	const bool bCalcRange, float rngMin, float rngMax)
+	const int nFreq, const bool bCalcRange, float rngMin, float rngMax)
 {
 	auto err = std::make_error_code(std::errc::permission_denied);
 	const auto [bOK, bFull, w, h, hDib, hFont] = initImage(io, imp);
@@ -605,7 +615,7 @@ std::tuple<std::error_code, float, float> CAnalyzer::saveImpImage(CImgSaveHelper
 		rngMin = rMin; rngMax = rMax;
 		const auto& src = imp;
 		const int n = (int)src.size();
-		drawImpGrid(hDib, hFont, n, rMin, rMax, w, h, io.drawGrid);
+		drawImpGrid(hDib, hFont, n, nFreq, rMin, rMax, w, h, io.drawGrid);
 		const double kh = double(h), kr = 1.0 / (rMax - rMin);
 		int x1 = -1, y1 = -1;
 		if (n <= w) {
