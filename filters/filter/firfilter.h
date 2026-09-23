@@ -249,13 +249,8 @@ private:
 	int initFFT(const int nLength, const int nFFTsz, const bool bFill1) {
 		const int fftSz = getFFTsize(std::max(nLength * 2, nFFTsz));
 		m_buf.resize((size_t)fftSz * 2);
-		if (bFill1) {
-			auto it = m_buf.begin();
-			for (int i = 0; i < nFFTsz * 2; i += 2) {
-				*it++ = 1.0f;
-				*it++ = 0.0f;
-			}
-		}
+		if (bFill1)
+			std::generate(m_buf.begin(), m_buf.end(), [n = 0]() mutable { return (0 == (n++) % 2) ? 1.0f : 0.0f; });
 		else
 			std::fill(m_buf.begin(), m_buf.end(), 0.0f);
 		m_fft.SetSize(fftSz);
