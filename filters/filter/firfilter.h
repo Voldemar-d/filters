@@ -230,7 +230,7 @@ private:
 		}
 		return n;
 	}
-	std::error_code CheckFreqLen(int& nLength, const int nFreq, const int nSampleRate) {
+	std::error_code CheckFreqLen(int& nLength, const int nFreq, const int nSampleRate) const {
 		if (nFreq < 10 || nFreq > nSampleRate * 499 / 1000 || nLength < MIN_FIR_LENGTH || nLength > MAX_FIR_LENGTH)
 			return std::make_error_code(std::errc::invalid_argument);
 		if (0 == nLength % 2)
@@ -249,7 +249,15 @@ private:
 	int initFFT(const int nLength, const int nFFTsz, const bool bFill1) {
 		const int fftSz = getFFTsize(std::max(nLength * 2, nFFTsz));
 		m_buf.resize((size_t)fftSz * 2);
-		std::fill(m_buf.begin(), m_buf.end(), bFill1 ? 1.0f : 0.0f);
+		if (bFill1) {
+			auto it = m_buf.begin();
+			for (int i = 0; i < nFFTsz * 2; i += 2) {
+				*it++ = 1.0f;
+				*it++ = 0.0f;
+			}
+		}
+		else
+			std::fill(m_buf.begin(), m_buf.end(), 0.0f);
 		m_fft.SetSize(fftSz);
 		return fftSz;
 	}
