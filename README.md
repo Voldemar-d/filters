@@ -56,7 +56,7 @@ Where:
 
 ### Generating series of filters
 
-You gan generate series of FIR filter responses with filter length increasing from specified length with specified step. Every frequency and/or impulse response are saved to a separate image file with image number at the end of filename, e.g.:
+You gan generate series of FIR filter responses with filter length increasing or decreasing from specified length with specified step. Every frequency and/or impulse response are saved to a separate image file with image number at the end of filename, e.g.:
 <pre>
 HighPass_5000hz_fft4096_exp_abs_wnd_0005_255pt.gif
 HighPass_5000hz_imp_wnd_0005_255pt.gif
@@ -69,7 +69,7 @@ HighPass_5000hz_imp_wnd_127-415pt_10.gif
 </pre>
 `127-415pt_10` means series of 10 filters with length from 127 to 415 points.
 
-You gan alse generate series of FIR filter responses with filter cutoff frequency increasing from specified one with specified step. Every frequency and/or impulse response are saved to a separate image file with image number at the end of filename, e.g.:
+You gan alse generate series of FIR filter responses with filter cutoff frequency increasing or descreasing from specified one with specified step. Every frequency and/or impulse response are saved to a separate image file with image number at the end of filename, e.g.:
 <pre>
 HighPass_fft4096_exp_dB_wnd_127pt_0010_5900hz.gif
 HighPass_imp_wnd_127pt_0010_5900hz.gif
