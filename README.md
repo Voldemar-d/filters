@@ -58,8 +58,8 @@ Where:
 
 You gan generate series of FIR filter responses with filter length increasing from specified length with specified step. Every frequency and/or impulse response are saved to a separate image file with image number at the end of filename, e.g.:
 <pre>
-HighPass_5000hz_fft4096_exp_abs_wnd_255pt_0005.gif
-HighPass_5000hz_imp_wnd_255pt_0005.gif
+HighPass_5000hz_fft4096_exp_abs_wnd_0005_255pt.gif
+HighPass_5000hz_imp_wnd_0005_255pt.gif
 </pre>
 
 Images with series of responses can be saved to multi-frame GIF files if delay between frames is specified (in 1/100th sec), e.g:
@@ -71,8 +71,8 @@ HighPass_5000hz_imp_wnd_127-415pt_10.gif
 
 You gan alse generate series of FIR filter responses with filter cutoff frequency increasing from specified one with specified step. Every frequency and/or impulse response are saved to a separate image file with image number at the end of filename, e.g.:
 <pre>
-HighPass_fft4096_exp_dB_wnd_127pt_5900hz_0010.gif
-HighPass_imp_wnd_127pt_5900hz_0010.gif
+HighPass_fft4096_exp_dB_wnd_127pt_0010_5900hz.gif
+HighPass_imp_wnd_127pt_0010_5900hz.gif
 </pre>
 Images with series of responses can be saved to multi-frame GIF files if delay between frames is specified (in 1/100th sec), e.g:
 <pre>
@@ -102,7 +102,7 @@ options can be:
 -fltwnd		calculate filter response with Kaiser windowing
 -fltinv		calculate filter response using inverse FFT transform
 -fft {N}	set {N} minimal points in FFT transform used for calculating/drawing frequency response
--outfolder	set output folder (will be created it doesn't exist) for saving image file(s)
+-outfolder	set output folder (will be created if doesn't exist) for saving image/WAV file(s)
 -width {N}	set width of output image file to {N} pixels (at least 64)
 	IMPORTANT: if width isn't specified then full response will be drawn
 -height {N}	set height of output image file to {N} pixels (at least 64)
