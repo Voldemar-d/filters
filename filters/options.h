@@ -33,14 +33,14 @@ struct imgOptions {
 	int width = 0, height = 0, dBrange = 100, dBtop = 0, expHz = 0, nLenSteps = 0, nFreqSteps = 0, nStepSize = 0, nGIFdelay = 0;
 	void CheckLenSteps() {
 		if (nFreqSteps > 0) {
-			if (nStepSize < 1)
+			if (std::abs(nStepSize) < 1)
 				nFreqSteps = 0;
 			else if (nFreqSteps < 2 || nFreqSteps > MAX_FLT_STEPS)
 				nFreqSteps = 0;
 		}
 		if (0 != nLenSteps % 2)
 			nLenSteps--;
-		if (nLenSteps < 2 || nLenSteps > MAX_FLT_STEPS || nStepSize < 2) {
+		if (nLenSteps < 2 || nLenSteps > MAX_FLT_STEPS || std::abs(nStepSize) < 2) {
 			nLenSteps = 0;
 			if (nFreqSteps < 2)
 				nStepSize = 0;
@@ -65,6 +65,7 @@ struct imgOptions {
 		return (nGIFdelay > 0 && (nLenSteps > 1 || nFreqSteps > 1) && width > 0);
 	}
 	std::pair<bool, int> getFltLen(const InputParser& input);
-	std::tuple<bool, int, int, int, int> getFltFreq(const InputParser& input);
+	// bOK, nSR, nFltFreq, nMinFltFreq, nMaxFltFreq, nFFTsz
+	std::tuple<bool, int, int, int, int, int> getFltFreq(const InputParser& input);
 	void getImgOptions(const InputParser& input);
 };

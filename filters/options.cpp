@@ -49,7 +49,7 @@ std::pair<bool, int> imgOptions::getFltLen(const InputParser& input) {
 	return std::make_pair(bOK, nFltLen);
 }
 
-std::tuple<bool, int, int, int, int> imgOptions::getFltFreq(const InputParser& input) {
+std::tuple<bool, int, int, int, int, int> imgOptions::getFltFreq(const InputParser& input) {
 	bool bOK = true;
 	int nFltFreq = nFltFreqDef, nFFTsz = nFFTszDef, nSR = DEF_SAMPLE_RATE, nMaxFltFreq = nSR * 499 / 1000;
 	for (;;) {
@@ -107,7 +107,7 @@ std::tuple<bool, int, int, int, int> imgOptions::getFltFreq(const InputParser& i
 		nLenSteps = 1;
 	if (nFreqSteps < 2)
 		nFreqSteps = 1;
-	return std::make_tuple(bOK, nSR, nFltFreq, nMaxFltFreq, nFFTsz);
+	return std::make_tuple(bOK, nSR, nFltFreq, nMinFltFreq, nMaxFltFreq, nFFTsz);
 }
 
 void imgOptions::getImgOptions(const InputParser& input) {

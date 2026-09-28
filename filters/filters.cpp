@@ -39,13 +39,14 @@ void printHelp(char** argv) {
 	std::cout << "-bw\t\tdraw image in black and white (color by default)" << '\n';
 	std::cout << "-gif\t\tsave to GIF (color only) instead of BMP" << '\n';
 	std::cout << "-imp\t\tsave separate image with impulse response of generated filter" << '\n';
-	std::cout << "-stepsize {K}\tset filter length step to K points (must be even) or frequency step to K Hz" << '\n';
-	std::cout << "-lensteps {N}\tgenerate N filters with length increasing with N points step" << '\n';
-	std::cout << "\tIMPORTANT: series of filters by length is generated only if N > 1 and K > 1 (must be even)" << '\n';
-	std::cout << "-freqsteps {M}\tgenerate M filters with frequency increasing with K Hz step" << '\n';
-	std::cout << "\tIMPORTANT: series of filters by frequency is generated only if M > 1 and K > 0" << '\n';
-	std::cout << "-delay {D}\tsave series of filters to multi-frame GIF with delay in 1/100th sec (D must be > 0)" << '\n';
-	std::cout << "\tIMPORTANT: multi-frame GIF is saved only if width is specified" << '\n';
+	std::cout << "-stepsize {K}\tset filter length step to {K} points (must be even) or frequency step to K Hz" << '\n';
+	std::cout << "\tNOTE: step size can be negative for decreasing filter length or frequency" << '\n';
+	std::cout << "-lensteps {N}\tgenerate {N} filters with length varying with {N} points step" << '\n';
+	std::cout << "\tIMPORTANT: series of filters by length is generated if {N} > 1 and non-zero {K} (must be even)" << '\n';
+	std::cout << "-freqsteps {M}\tgenerate {M} filters with frequency varying with {K} Hz step" << '\n';
+	std::cout << "\tIMPORTANT: series of filters by frequency is generated if {M} > 1 and non-zero {K}" << '\n';
+	std::cout << "-delay {D}\tsave series of filters to multi-frame GIF with delay in 1/100th sec, {D} must be > 0" << '\n';
+	std::cout << "\tIMPORTANT: multi-frame GIF is saved only if image width is specified" << '\n';
 	std::cout << "-wav {infile}\tload WAV file, process with generated filter and save result to output folder" << '\n';
 }
 
@@ -80,7 +81,7 @@ int main(int argc, char* argv[])
 	if (!bOKlen)
 		return retError();
 
-	const auto [bOKfreq, nSR, nFltFreq, nMaxFltFreq, nFFTsz] = io.getFltFreq(input);
+	const auto [bOKfreq, nSR, nFltFreq, nMinFltFreq, nMaxFltFreq, nFFTsz] = io.getFltFreq(input);
 	if (!bOKfreq)
 		return retError();
 
@@ -128,12 +129,12 @@ int main(int argc, char* argv[])
 			freq = nFreq;
 			if (bStepByFreq) {
 				nFreq += io.nStepSize;
-				if (nFreq > nMaxFltFreq)
+				if (nFreq < nMinFltFreq || nFreq > nMaxFltFreq)
 					break;
 			}
 			else {
 				nFLen += io.nStepSize;
-				if (nFLen > MAX_FIR_LENGTH)
+				if (nFLen < MIN_FIR_LENGTH || nFLen > MAX_FIR_LENGTH)
 					break;
 			}
 		}

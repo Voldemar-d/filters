@@ -115,13 +115,14 @@ options can be:
 -bw		draw image in black and white (color by default)
 -gif		save to GIF (color only) instead of BMP
 -imp		save separate image with impulse response of generated filter
--stepsize {K}	set filter length step to K points (must be even) or frequency step to K Hz
--lensteps {N}	generate N filters with length increasing with N points step
-	IMPORTANT: series of filters by length is generated only if N > 1 and K > 1 (must be even)
--freqsteps {M}	generate M filters with frequency increasing with K Hz step
-	IMPORTANT: series of filters by frequency is generated only if M > 1 and K > 0
--delay {D}	save series of filters to multi-frame GIF with delay in 1/100th sec (D must be > 0)
-	IMPORTANT: multi-frame GIF is saved only if width is specified
+-stepsize {K}	set filter length step to {K} points (must be even) or frequency step to K Hz
+	NOTE: step size can be negative for decreasing filter length or frequency
+-lensteps {N}	generate {N} filters with length varying with {N} points step
+	IMPORTANT: series of filters by length is generated if {N} > 1 and non-zero {K} (must be even)
+-freqsteps {M}	generate {M} filters with frequency varying with {K} Hz step
+	IMPORTANT: series of filters by frequency is generated if {M} > 1 and non-zero {K}
+-delay {D}	save series of filters to multi-frame GIF with delay in 1/100th sec, {D} must be > 0
+	IMPORTANT: multi-frame GIF is saved only if image width is specified
 -wav {infile}	load WAV file, process with generated filter and save result to output folder
 </pre>
 ### Examples

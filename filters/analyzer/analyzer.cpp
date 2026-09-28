@@ -60,9 +60,9 @@ std::pair<std::error_code, std::string> CImgSaveHelper::nextFilename()
 		}
 		else {
 			if (bStepByFreq)
-				fname += fmt::format("_{:d}pt_{:d}hz_{:04d}", nFltLen, nFltFreq, m_nIndex + 1);
+				fname += fmt::format("_{:d}pt_{:04d}_{:d}hz", nFltLen, m_nIndex + 1, nFltFreq);
 			else
-				fname += fmt::format("_{:d}pt_{:04d}", nFltLen, m_nIndex + 1);
+				fname += fmt::format("_{:04d}_{:d}pt", m_nIndex + 1, nFltLen);
 		}
 	}
 	fname += m_io.GIF ? ".gif" : ".bmp";
