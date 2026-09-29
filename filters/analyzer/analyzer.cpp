@@ -125,7 +125,7 @@ std::pair<int, double> CAnalyzer::CalcResp(const size_t fsz) {
 }
 
 std::tuple<bool, bool, int, int, HEZDIMAGE, HEZDFONT> CAnalyzer::initImage(const imgOptions& io, const std::vector<float>& data) {
-	bool bOK = !data.empty(), bFull = io.Full();
+	const bool bOK = !data.empty(), bFull = io.Full();
 	int w = 0, h = 0;
 	HEZDIMAGE hDib = nullptr; HEZDFONT hFont = nullptr;
 	if (bOK) {
