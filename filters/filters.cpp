@@ -34,14 +34,14 @@ void printHelp(char** argv) {
 	std::cout << "-range {dB}\tset vertical range (100 dB by default) for drawing in decibels" << '\n';
 	std::cout << "-top {dB}\tset top of range (0 dB by default) for drawing in decibels" << '\n';
 	std::cout << "-exp {N}\tdraw with exponential frequency scale, starting from {N} Hz (can be " << MIN_EXP_FREQ << " to " << MAX_EXP_FREQ << ")\n";
-	std::cout << "\tIMPORTANT: width and starting frequency must be specified for exponential frequency scale" << '\n';
+	std::cout << "\tIMPORTANT: image width also must be specified for exponential frequency scale" << '\n';
 	std::cout << "-grid\t\tdraw grid on frequency/impulse response" << '\n';
 	std::cout << "-bw\t\tdraw image in black and white (color by default)" << '\n';
 	std::cout << "-gif\t\tsave to GIF (color only) instead of BMP" << '\n';
 	std::cout << "-imp\t\tsave separate image with impulse response of generated filter" << '\n';
 	std::cout << "-stepsize {K}\tset filter length step to {K} points (must be even) or frequency step to K Hz" << '\n';
 	std::cout << "\tNOTE: step size can be negative for decreasing filter length or frequency" << '\n';
-	std::cout << "-lensteps {N}\tgenerate {N} filters with length varying with {N} points step" << '\n';
+	std::cout << "-lensteps {N}\tgenerate {N} filters with length varying with {K} points step" << '\n';
 	std::cout << "\tIMPORTANT: series of filters by length is generated if {N} > 1 and non-zero {K} (must be even)" << '\n';
 	std::cout << "-freqsteps {M}\tgenerate {M} filters with frequency varying with {K} Hz step" << '\n';
 	std::cout << "\tIMPORTANT: series of filters by frequency is generated if {M} > 1 and non-zero {K}" << '\n';

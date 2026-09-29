@@ -110,14 +110,14 @@ options can be:
 -range {dB}	set vertical range (100 dB by default) for drawing in decibels
 -top {dB}	set top of range (0 dB by default) for drawing in decibels
 -exp {N}	draw with exponential frequency scale, starting from {N} Hz (can be 10 to 1000)
-	IMPORTANT: width and starting frequency must be specified for exponential frequency scale
+	IMPORTANT: image width also must be specified for exponential frequency scale
 -grid		draw grid on frequency/impulse response
 -bw		draw image in black and white (color by default)
 -gif		save to GIF (color only) instead of BMP
 -imp		save separate image with impulse response of generated filter
 -stepsize {K}	set filter length step to {K} points (must be even) or frequency step to K Hz
 	NOTE: step size can be negative for decreasing filter length or frequency
--lensteps {N}	generate {N} filters with length varying with {N} points step
+-lensteps {N}	generate {N} filters with length varying with {K} points step
 	IMPORTANT: series of filters by length is generated if {N} > 1 and non-zero {K} (must be even)
 -freqsteps {M}	generate {M} filters with frequency varying with {K} Hz step
 	IMPORTANT: series of filters by frequency is generated if {M} > 1 and non-zero {K}
