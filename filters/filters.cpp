@@ -232,7 +232,7 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	std::cout << "Processed " << numSamples << " in " << numChannels << " channels" << '\n';
+	std::cout << "Processed " << numSamples << " samples in " << numChannels << " channels" << '\n';
 
 	if (!audioFile.save(outwav, AudioFileFormat::Wave))
 	{
