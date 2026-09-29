@@ -102,7 +102,7 @@ options can be:
 -fltwnd		calculate filter response with Kaiser windowing
 -fltinv		calculate filter response using inverse FFT transform
 -fft {N}	set {N} minimal points in FFT transform used for calculating/drawing frequency response
--outfolder	set output folder (will be created if doesn't exist) for saving image/WAV file(s)
+-outfolder {path}	set folder (will be created if doesn't exist) for saving image/WAV file(s)
 -width {N}	set width of output image file to {N} pixels (at least 64)
 	IMPORTANT: if width isn't specified then full response will be drawn
 -height {N}	set height of output image file to {N} pixels (at least 64)

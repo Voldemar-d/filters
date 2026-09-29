@@ -26,7 +26,7 @@ void printHelp(char** argv) {
 	std::cout << "-fltwnd\t\tcalculate filter response with Kaiser windowing" << '\n';
 	std::cout << "-fltinv\t\tcalculate filter response using inverse FFT transform" << '\n';
 	std::cout << "-fft {N}\tset {N} minimal points in FFT transform used for calculating/drawing frequency response" << '\n';
-	std::cout << "-outfolder\tset output folder (will be created if doesn't exist) for saving image/WAV file(s)" << '\n';
+	std::cout << "-outfolder {path}\tset folder (will be created if doesn't exist) for saving image/WAV file(s)" << '\n';
 	std::cout << "-width {N}\tset width of output image file to {N} pixels (at least " << MIN_IMG_DIM << ")\n";
 	std::cout << "\tIMPORTANT: if width isn't specified then full response will be drawn" << '\n';
 	std::cout << "-height {N}\tset height of output image file to {N} pixels (at least " << MIN_IMG_DIM << ")\n";
