@@ -24,6 +24,14 @@
 
 #define MAX_FLT_STEPS 9999
 
+#define MAX_EQU_BANDS 100
+#define MIN_GAIN_DB -48
+#define MAX_GAIN_DB 24
+#define MIN_OCT_STEP 0.1
+#define MAX_OCT_STEP 2.0
+#define DEFAULT_OCT_STEP 1
+#define DEFAULT_BASE_FREQ 31.25
+
 struct imgOptions {
 	bool dB = false,
 		drawGrid = false,
@@ -31,12 +39,30 @@ struct imgOptions {
 		BW = false,
 		GIF = false;
 	int width = 0, height = 0, dBrange = 100, dBtop = 0, expHz = 0, nLenSteps = 0, nFreqSteps = 0, nStepSize = 0, nGIFdelay = 0;
+	double dBmaster = 0, octStep = DEFAULT_OCT_STEP, baseFreq = DEFAULT_BASE_FREQ;
+	std::vector<double> dBequ, dBequ2, dBstep;
+	bool IsEqu() const {
+		return (dBequ.size() > 1);
+	}
 	void CheckLenSteps() {
-		if (nFreqSteps > 0) {
+		if (IsEqu()) {
+			if (dBequ.size() != dBequ2.size() || nFreqSteps < 2)
+				nFreqSteps = 0;
+			if (nFreqSteps > 1) {
+				dBstep.reserve(dBequ.size());
+				const auto dk = 1.0 / double(nFreqSteps - 1);
+				std::transform(dBequ.begin(), dBequ.end(), dBequ2.begin(), std::back_inserter(dBstep),
+					[&dk](auto a, auto b) { return (b - a) * dk; });
+				nLenSteps = 0;
+			}
+		}
+		else if (nFreqSteps > 0) {
 			if (std::abs(nStepSize) < 1)
 				nFreqSteps = 0;
 			else if (nFreqSteps < 2 || nFreqSteps > MAX_FLT_STEPS)
 				nFreqSteps = 0;
+			if (nFreqSteps > 1)
+				nLenSteps = 0;
 		}
 		if (0 != nLenSteps % 2)
 			nLenSteps--;
@@ -45,6 +71,10 @@ struct imgOptions {
 			if (nFreqSteps < 2)
 				nStepSize = 0;
 		}
+	}
+	void equStep() {
+		if (dBequ.size() == dBstep.size())
+			std::transform(dBequ.begin(), dBequ.end(), dBstep.begin(), dBequ.begin(), std::plus<double>());
 	}
 	bool StepByFreq() const {
 		return (nFreqSteps > 1);

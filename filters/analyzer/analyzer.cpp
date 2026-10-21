@@ -21,21 +21,26 @@ CImgSaveHelper::~CImgSaveHelper() {
 std::pair<std::error_code, std::string> CImgSaveHelper::nextFilename()
 {
 	const bool bIndex = (m_nIndex > -1), bMultiGIF = m_io.GIF && m_io.MultiGIF(),
-		bStepByFreq = m_io.StepByFreq();
+		bStepByFreq = m_io.StepByFreq(), bEqu = m_io.IsEqu();
 	const int nFltLen = m_nFltLen + (bIndex && !bMultiGIF && !bStepByFreq ? m_nIndex * m_io.nStepSize : 0),
 		nFltFreq = m_nFltFreq + (bIndex && !bMultiGIF && bStepByFreq ? m_nIndex * m_io.nStepSize : 0);
-	auto fname = fmt::format("{:s}_", m_io.LPF ? "LowPass" : "HighPass");
-	if (!bIndex)
-		fname += fmt::format("{:d}pt_{:d}hz", nFltLen, nFltFreq);
+	auto fname = bEqu ? fmt::format("Equ{:d}b_", m_io.dBequ.size()) : fmt::format("{:s}_", m_io.LPF ? "LowPass" : "HighPass");
+	if (!bIndex) {
+		fname += bEqu ? fmt::format("{:d}pt", nFltLen) : fmt::format("{:d}pt_{:d}hz", nFltLen, nFltFreq);
+	}
 	else {
 		if (bMultiGIF) {
-			if (bStepByFreq)
-				fname += fmt::format("{:d}-{:d}hz_{:d}", nFltFreq, nFltFreq + (m_io.nFreqSteps - 1) * m_io.nStepSize, m_io.nFreqSteps);
+			if (bStepByFreq) {
+				if (bEqu)
+					fname += fmt::format("{:d}", m_io.nFreqSteps);
+				else
+					fname += fmt::format("{:d}-{:d}hz_{:d}", nFltFreq, nFltFreq + (m_io.nFreqSteps - 1) * m_io.nStepSize, m_io.nFreqSteps);
+			}
 			else
 				fname.erase(fname.begin() + fname.size() - 1);
 		}
 		else {
-			if (bStepByFreq)
+			if (bStepByFreq || bEqu)
 				fname.erase(fname.begin() + fname.size() - 1);
 			else
 				fname += fmt::format("{:d}hz", nFltFreq);
@@ -54,13 +59,13 @@ std::pair<std::error_code, std::string> CImgSaveHelper::nextFilename()
 	if (bIndex) {
 		if (bMultiGIF) {
 			if (bStepByFreq)
-				fname += fmt::format("_{:d}pt", nFltLen);
+				fname += bEqu ? "" : fmt::format("_{:d}pt", nFltLen);
 			else
 				fname += fmt::format("_{:d}-{:d}pt_{:d}", nFltLen, nFltLen + (m_io.nLenSteps - 1) * m_io.nStepSize, m_io.nLenSteps);
 		}
 		else {
 			if (bStepByFreq)
-				fname += fmt::format("_{:d}pt_{:04d}_{:d}hz", nFltLen, m_nIndex + 1, nFltFreq);
+				fname += bEqu ? fmt::format("_{:d}pt_{:04d}", nFltLen, m_nIndex + 1) : fmt::format("_{:d}pt_{:04d}_{:d}hz", nFltLen, m_nIndex + 1, nFltFreq);
 			else
 				fname += fmt::format("_{:04d}_{:d}pt", m_nIndex + 1, nFltLen);
 		}
@@ -82,17 +87,15 @@ std::error_code CImgSaveHelper::getFullPath(const std::string& outfolder, std::s
 	return std::make_error_code(std::errc());
 }
 
-size_t CAnalyzer::getFFTsize(size_t nSamples, bool bUp) const {
+size_t CAnalyzer::getFFTsize(size_t nSamples) const {
 	size_t fsz = 2;
 	while (fsz < nSamples)
 		fsz <<= 1;
-	if (fsz > nSamples && !bUp)
-		fsz >>= 1;
 	return fsz;
 }
 
 size_t CAnalyzer::GetRespFIR(const int nFFTmin, const int nSamples, const std::vector<float>& data) {
-	const auto fsz = std::max(getFFTsize(nSamples, true), size_t(std::max(nFFTmin, MIN_FFT_SIZE)));
+	const auto fsz = getFFTsize((size_t)std::max(nSamples, std::max(nFFTmin, MIN_FFT_SIZE)));
 	m_data.clear();
 	m_data.resize(fsz * 2);
 	std::fill(m_data.begin(), m_data.end(), 0.0f);
@@ -214,24 +217,34 @@ std::pair<std::error_code, float> CAnalyzer::saveFRImage(CImgSaveHelper& is, con
 			n = (int)m_expdraw.size();
 			if (0 == n % 2)
 				n--;
-			for (j = 0; j < n - 1; j += 2) {
-				const auto [min1, max1] = std::minmax_element(sdata + std::get<1>(m_expdraw[j]), sdata + std::get<1>(m_expdraw[j + 1]));
-				const auto [min2, max2] = std::minmax_element(sdata + std::get<1>(m_expdraw[j + 1]), sdata + std::get<1>(m_expdraw[j + 2]));
-				dmin = std::min(*min1, *min2);
-				dmax = std::max(*max2, *max2);
-				if (*min2 < *min1 && *max2 < *min1)
-					bUp = false;
-				else
-					bUp = true;
-				std::get<3>(m_expdraw[j]) = bUp ? dmin : dmax;
-				jlast = j + 1;
-				std::get<3>(m_expdraw[jlast]) = bUp ? dmax : dmin;
-				fmax = std::max(fmax, dmax);
-			}
-			if (jlast > 0) {
+			if (io.IsEqu()) { // graphic equalizer
+				for (j = 0; j < n - 1; j++)
+					std::get<3>(m_expdraw[j]) = sdata[std::get<1>(m_expdraw[j])];
+				const auto dlast = sdata[std::get<1>(m_expdraw[j])];
 				n = (int)m_expdraw.size();
-				for (j = jlast + 1; j < n; j++)
-					std::get<3>(m_expdraw[j]) = bUp ? dmax : dmin;
+				for (; j < n; j++)
+					std::get<3>(m_expdraw[j]) = dlast;
+			}
+			else { // low/high-pass filter
+				for (j = 0; j < n - 1; j += 2) {
+					const auto [min1, max1] = std::minmax_element(sdata + std::get<1>(m_expdraw[j]), sdata + std::get<1>(m_expdraw[j + 1]));
+					const auto [min2, max2] = std::minmax_element(sdata + std::get<1>(m_expdraw[j + 1]), sdata + std::get<1>(m_expdraw[j + 2]));
+					dmin = std::min(*min1, *min2);
+					dmax = std::max(*max2, *max2);
+					if (*min2 < *min1 && *max2 < *min1)
+						bUp = false;
+					else
+						bUp = true;
+					std::get<3>(m_expdraw[j]) = bUp ? dmin : dmax;
+					jlast = j + 1;
+					std::get<3>(m_expdraw[jlast]) = bUp ? dmax : dmin;
+					fmax = std::max(fmax, dmax);
+				}
+				if (jlast > 0) {
+					n = (int)m_expdraw.size();
+					for (j = jlast + 1; j < n; j++)
+						std::get<3>(m_expdraw[j]) = bUp ? dmax : dmin;
+				}
 			}
 			for (i = 0; i < w; i++) {
 				if (0 == i)
@@ -265,18 +278,24 @@ std::pair<std::error_code, float> CAnalyzer::saveFRImage(CImgSaveHelper& is, con
 				}
 				m_index.push_back(n - 1);
 				n = (int)m_index.size();
-				for (j = 0; j < n - 1; j += 2) {
-					const auto [min1, max1] = std::minmax_element(sdata + m_index[j], sdata + m_index[j + 1]);
-					const auto [min2, max2] = std::minmax_element(sdata + m_index[j + 1], sdata + m_index[j + 2]);
-					dmin = std::min(*min1, *min2);
-					dmax = std::max(*max1, *max2);
-					if (*min2 < *min1 && *max2 < *min1)
-						bUp = false;
-					else
-						bUp = true;
-					m_fdraw[j] = bUp ? dmin : dmax;
-					m_fdraw[j + 1] = bUp ? dmax : dmin;
-					fmax = std::max(fmax, dmax);
+				if (io.IsEqu()) { // graphic equalizer
+					for (j = 0; j < n - 1; j++)
+						m_fdraw[j] = sdata[m_index[j]];
+				}
+				else { // low/high-pass filter
+					for (j = 0; j < n - 1; j += 2) {
+						const auto [min1, max1] = std::minmax_element(sdata + m_index[j], sdata + m_index[j + 1]);
+						const auto [min2, max2] = std::minmax_element(sdata + m_index[j + 1], sdata + m_index[j + 2]);
+						dmin = std::min(*min1, *min2);
+						dmax = std::max(*max1, *max2);
+						if (*min2 < *min1 && *max2 < *min1)
+							bUp = false;
+						else
+							bUp = true;
+						m_fdraw[j] = bUp ? dmin : dmax;
+						m_fdraw[j + 1] = bUp ? dmax : dmin;
+						fmax = std::max(fmax, dmax);
+					}
 				}
 			}
 			checkRngMax();
@@ -374,7 +393,7 @@ void CAnalyzer::drawExp(const imgOptions& io, const std::vector<T>& draw, const 
 		if (x == w - 1)
 			x1 = x;
 		nHz = int(hz + 0.5);
-		if (nHz >= nFreq) { // draw filter's cutoff frequency
+		if (!io.IsEqu() && nHz >= nFreq) { // draw filter's cutoff frequency
 			drawFreq(hDib, hFont, -x, w, h, nSampleRate, nFreq, io.drawGrid);
 			nFreq = nSampleRate;
 		}
@@ -415,7 +434,7 @@ void CAnalyzer::drawLinear(const imgOptions& io, const std::vector<T>& draw, con
 		if (0 == x % dx)
 			drawFreq(hDib, hFont, x, w, h, nSampleRate, 0, io.drawGrid);
 		nHz = int(double(x) * dnfw + 0.5);
-		if (nHz >= nFreq) { // draw filter's cutoff frequency
+		if (!io.IsEqu() && nHz >= nFreq) { // draw filter's cutoff frequency
 			drawFreq(hDib, hFont, -x, w, h, nSampleRate, nFreq, io.drawGrid);
 			nFreq = nSampleRate;
 		}
@@ -482,9 +501,11 @@ void CAnalyzer::drawdBScale(HEZDIMAGE hDib, HEZDFONT hFont, int w, int h, int nR
 	const int dy = nH * 2, dh = nH / 2, yz = h - h * nTop / nRange;
 	if (yz < yt) {
 		drawDotScale(hDib, w, h, 0, w, yz, yz, m_clrDb);
-		ndB = 0;
-		fmt::format_to(m_str, "-{:d}-{:c}", ndB, '\0');
-		drawText(nH, hDib, hFont, m_str, nW + 2, yz - dh - 1, m_clrDb);
+		if (nTop != nRange / 2) {
+			ndB = 0;
+			fmt::format_to(m_str, "-{:d}-{:c}", ndB, '\0');
+			drawText(nH, hDib, hFont, m_str, nW + 2, yz - dh - 1, m_clrDb);
+		}
 	}
 	while (y < yt) {
 		y += dy;

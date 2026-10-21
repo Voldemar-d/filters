@@ -1,25 +1,17 @@
 #pragma once
 
 #include "../external/fft4f.h"
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
+#include "bezier.h"
+#include "window.h"
 
 #include <system_error>
 
 #define MIN_FIR_LENGTH 15
 #define MAX_FIR_LENGTH 65535
 
-// Compute Bessel function Izero(y) using a series approximation
-inline double izero(double y) {
-	double s = 1.0, ds = 1.0, d = 0.0;
-	do {
-		d += 2.0;
-		ds = ds * (y * y) / (d * d);
-		s = s + ds;
-	} while (ds > 1E-7 * s);
-	return s;
+inline double dB2Gain(double dB)
+{
+	return pow(10.0, dB / 20.0);
 }
 
 class CFIRFilter {
@@ -159,6 +151,39 @@ public:
 		out += (*t) * (*dp2);
 		return out;
 	}
+	void CalcFIREqu(int firlen, const int nFFTsz, const double MdB, const uint32_t nbands, double* db, const double bfreq,
+		const double octStep, const eWndType wt = eWndType::Kaiser)
+	{
+		if (0 == firlen % 2)
+			firlen++;
+		m_flt.resize(firlen);
+		// prepare frequency response
+		const int fftsize = getFFTsize(std::max(firlen * 2, nFFTsz));
+		std::vector<float> fdata(fftsize * 2);
+		auto data = fdata.data();
+		CBezier bezier;
+		bezier.CalcResp(fftsize, data, nbands, db, bfreq, octStep);
+		// get impulse response from frequency response
+		TFFTF fft;
+		fft.SetSize(fftsize);
+		fft.CDFTI(data);
+		// use master gain (can be 0 dB if not needed)
+		const auto r = dB2Gain(MdB) / double(fftsize);
+		auto s1 = data;
+		const auto flen2 = firlen / 2;
+		auto h = m_flt.data();
+		h[flen2] = float((*s1) * r);
+		s1 += 2;
+		// create symmetric impulse response
+		auto d1 = h + flen2 - 1;
+		auto d2 = h + flen2 + 1;
+		for (int i = 0; i < flen2; i++) {
+			*d1 = *d2 = float((*s1) * r);
+			d1--; d2++; s1 += 2;
+		}
+		if (eWndType::none != wt)
+			ApplyWindow(h, firlen, wt);
+	}
 private:
 	std::tuple<double, double, double> KaiserConst(const int Np) const { // (N-1)/2 for odd N
 		const double ni = 1.0 / double(Np);
@@ -242,8 +267,6 @@ private:
 		int fsz = 2;
 		while (fsz < nSamples)
 			fsz <<= 1;
-		if (fsz > nSamples)
-			fsz >>= 1;
 		return fsz;
 	}
 	int initFFT(const int nLength, const int nFFTsz, const bool bFill1) {

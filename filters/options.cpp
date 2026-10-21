@@ -1,31 +1,87 @@
 #include "options.h"
+#include <sstream>
 
 constexpr int nFltFreqDef = 1000, nMinFltFreq = 10, nFFTszDef = 4096, nMaxDelay = 9999;
 
 std::pair<bool, int> imgOptions::getFltLen(const InputParser& input) {
-	bool bOK = true; int nFltLen = 0;
-	auto checkFIRLen = [](const int nlen) {
-		if (nlen < MIN_FIR_LENGTH || nlen > MAX_FIR_LENGTH) {
-			std::cout << "Error: FIR filter length must be between " << MIN_FIR_LENGTH << " and " << MAX_FIR_LENGTH << '\n';
+	bool bOK = false; int nFltLen = 0;
+	auto getFltLen = [&input, &nFltLen]() {
+		auto checkFIRLen = [](const int nlen) {
+			if (nlen < MIN_FIR_LENGTH || nlen > MAX_FIR_LENGTH) {
+				std::cout << "Error: FIR filter length must be between " << MIN_FIR_LENGTH << " and " << MAX_FIR_LENGTH << '\n';
+				return false;
+			}
+			return true;
+		};
+		const auto& param = input.getThisOption();
+		const auto nlen = atoi(param.c_str());
+		if (!checkFIRLen(nlen))
 			return false;
-		}
+		nFltLen = nlen;
 		return true;
 	};
-	if (input.cmdOptionExists("-fltlp")) {
-		const auto& param = input.getThisOption();
-		const auto nlen = atoi(param.c_str());
-		if (!checkFIRLen(nlen))
-			bOK = false;
-		nFltLen = nlen;
-		LPF = true;
+	if (input.cmdOptionExists("-fltequ")) { // graphic equalizer
+		auto getVal = [&input](const bool bInput, auto pstr, const double nMin, const double nMax, double& dVal) {
+			auto retVal = [nMin, nMax, &dVal](std::string str) {
+				auto nVal = atof(str.c_str());
+				const auto res = str.find("/");
+				if (res != std::string::npos) {
+					const auto str1 = str.substr(0, res), str2 = str.substr(res + 1);
+					const auto num = atof(str1.c_str()), den = atof(str2.c_str());
+					if (den != 0)
+						nVal = num / den;
+				}
+				const int iVal = int(nVal * 10.0);
+				if (iVal >= int(nMin * 10.0) && iVal <= int(nMax * 10.0)) {
+					dVal = nVal;
+					return true;
+				}
+				return false;
+			};
+			if (bInput) {
+				if (input.cmdOptionExists(pstr))
+					return retVal(input.getThisOption().c_str());
+				return false;
+			}
+			return retVal(pstr);
+		};
+		if (getFltLen()) {
+			getVal(true, "-mdB", MIN_GAIN_DB, MAX_GAIN_DB, dBmaster);
+			getVal(true, "-octstep", MIN_OCT_STEP, MAX_OCT_STEP, octStep);
+			getVal(true, "-equfreq", MIN_EXP_FREQ, MAX_EXP_FREQ, baseFreq);
+			auto getEqudB = [&input, &getVal](auto pstr, auto& lst) {
+				if (input.cmdOptionExists(pstr)) {
+					std::stringstream ss(input.getThisOption());
+					std::string field; double dB; int nband = 0;
+					while (std::getline(ss, field, ';') && nband < MAX_EQU_BANDS) {
+						if (getVal(false, field.c_str(), MIN_GAIN_DB, MAX_GAIN_DB, dB)) {
+							lst.push_back(dB);
+							nband++;
+						}
+					}
+				}
+			};
+			getEqudB("-equdB", dBequ);
+			getEqudB("-equdB2", dBequ2);
+			bOK = IsEqu();
+			if (bOK && !dBequ2.empty() && dBequ2.size() != dBequ.size()) {
+				std::cout << "Different number of frequency bands in 2nd state of equalizer (" << dBequ2.size() << " vs " << dBequ.size() << "), ";
+				std::cout << "only one filter is generated." << '\n';
+				dBequ2.clear();
+			}
+			if (!bOK)
+				std::cout << "Number of equalizer frequency bands must be greater than 1." << '\n';
+		}
 	}
-	else if (input.cmdOptionExists("-flthp")) {
-		const auto& param = input.getThisOption();
-		const auto nlen = atoi(param.c_str());
-		if (!checkFIRLen(nlen))
-			bOK = false;
-		nFltLen = nlen;
-		LPF = false;
+	if (!IsEqu()) { // low/high-pass filter
+		if (input.cmdOptionExists("-fltlp")) {
+			LPF = true;
+			bOK = getFltLen();
+		}
+		else if (input.cmdOptionExists("-flthp")) {
+			LPF = false;
+			bOK = getFltLen();
+		}
 	}
 	if (nFltLen < MIN_FIR_LENGTH) {
 		std::cout << "No options specified." << '\n';
@@ -69,6 +125,14 @@ std::tuple<bool, int, int, int, int, int> imgOptions::getFltFreq(const InputPars
 			}
 			return true;
 		};
+		if (input.cmdOptionExists("-fltfreq")) {
+			const auto& param = input.getThisOption();
+			const auto freq = atoi(param.c_str());
+			if (!checkFIRFreq(freq)) {
+				bOK = false; break;
+			}
+			nFltFreq = freq;
+		}
 		auto checkFFTsize = [](const int nfft) {
 			bool bErr = (nfft < MIN_FFT_SIZE);
 			if (!bErr) {
@@ -85,14 +149,6 @@ std::tuple<bool, int, int, int, int, int> imgOptions::getFltFreq(const InputPars
 			}
 			return true;
 		};
-		if (input.cmdOptionExists("-fltfreq")) {
-			const auto& param = input.getThisOption();
-			const auto freq = atoi(param.c_str());
-			if (!checkFIRFreq(freq)) {
-				bOK = false; break;
-			}
-			nFltFreq = freq;
-		}
 		if (input.cmdOptionExists("-fft")) {
 			const auto& param = input.getThisOption();
 			const auto nfft = atoi(param.c_str());

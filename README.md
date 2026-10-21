@@ -1,13 +1,15 @@
 # filters
-Digital filter calculator and frequency analyzer. Uses fast Fourier transform (**FFT**) for calculations.
+Digital filter calculator and frequency analyzer. Uses [fast Fourier transform](https://en.wikipedia.org/wiki/Fast_Fourier_transform) (**FFT**) for calculations.
 
 ![image](lp.gif)
 
 Filters can be used for processing audio or other signals.
 
+**Update**: multi-band graphic equalizer can be calculated too (see below).
+
 ### Impulse response
 
-Allows to calculate filters with finite impulse responce (**FIR**):
+The program allows to calculate filters with finite impulse responce (**FIR**):
 
 - low-pass using Kaizer windowing
 - high-pass using Kaizer windowing
@@ -94,7 +96,8 @@ If series of filters is generated, only first filter is used for processing audi
 Usage: "filters.exe" [options]
 
 options can be:
--help		display this help
+-help		display this help on low/high-pass filter
+-helpequ	display help on graphic equalizer
 -sr {N}		set sample rate to {N} Hz (can be 1000 to 100000, default is 48000)
 -flthp {N}	generate high-pass FIR filter of {N} points length (127+ recommended)
 -fltlp {N}	generate low-pass FIR filter of {N} points length (127+ recommended)
@@ -125,7 +128,10 @@ options can be:
 	IMPORTANT: multi-frame GIF is saved only if image width is specified
 -wav {infile}	load WAV file, process with generated filter and save result to output folder
 </pre>
+**Note**: see below for help on multi-band graphic equalizer.
+
 ### Examples
+
 <pre>
 filters.exe -outfolder D:\tmp\flt -fltlp 511 -fltfreq 2000 -exp 100 -dB -top 10 -range 200 -grid -width 1024 -height 600 -imp
 </pre>
@@ -152,6 +158,82 @@ Saves series of 10 frequency and impulse responses of 127-point high-pass filter
 Resulting image with frequency response:
 
 ![image](hpf.gif)
+
+## Graphic equalizer
+
+Not only low/high-pass filters, but also multi-band graphic [equalizer](https://en.wikipedia.org/wiki/Audio_equalization) with symmetrical finite impulse response can be generated (without phase distortion of processed signals).
+
+![image](equ10.gif)
+
+The image shows example of 10-band equalizer with 1-octave size frequency bands and the following band volumes in dB:
+<pre>
+0;3;0;6;0;-3;-6;0;12;0
+</pre>
+You can specify:
+
+- frequency of lowest band (this band is low-shelf, i.e. it defines amplification from 0 Hz)
+- size of every band in octaves (band frequencies are calculated automatically)
+- volume (in dB) in arbitrary number of bands (20, 30 etc.)
+- master volume (in dB)
+
+The highest-frequency band is high-shelf, i.e. it defines amplification up to 1/2 of sampling frequency.
+
+As for low/pass filters, you can:
+
+- save images with frequency and impulse response of generated filter
+- generate series of equalizers with varying filter length
+- generate series of equalizers with state varying from one to another
+- process audio in WAV file with generated filter
+
+[Bézier curves](http://en.wikipedia.org/wiki/Bezier_Curve) are used for defining equalizer's frequency response before performing inverse discrete fast Fourier transform (FFT).
+
+### Command line for equalizer mode
+
+Only commands for defining graphic equalizer are listed below (the rest are the same as for low/high-pass filters):
+
+<pre>
+Usage: "filters.exe" [options]
+
+options can be:
+-help		display help on low/high-pass filter
+-helpequ	display this help on graphic equalizer
+-fltequ {N}	generate graphic equalizer FIR filter of {N} points length (127+ recommended)
+-mdB {N}	set master gain to N dB (can be -48 to 24, default is 0)
+-octstep {N}	set step in octaves = size of equalizer frequency band
+	(can be 0.1 to 2, default is 1; you can specify 1/2, 1/3 etc.)
+-equfreq {N}	set frequency of lowest equalizer band to {N} Hz (can be 10 to 1000, default is 31.25)
+-equdB {N1;N2;...}	set volume (can be -48 to 24) in equalizer bands (in dB separated with ;)
+	IMPORTANT: at least 2 bands must be specified, maximum is 100 bands
+-equdB2 {N1;N2;...}	set volume in bands for 2nd state used for generating series of filters
+	IMPORTANT: number of bands must be the same as specified in -equdB
+...
+(the rest options are the same as for low/high-pass filters)
+</pre>
+
+### Examples for equalizer
+
+<pre>
+filters.exe -fltequ 8191 -fltwnd equdB 0;3;0;6;0;-3;-6;0;12;0 -outfolder D:\tmp\flt -dB -top 20 -range 40 -grid -height 400 -width 600 -exp 20 -fft 16384 -gif
+</pre>
+Saves frequency response of 10-band equalizer (band volumes are from an example above) filter with length of 8191 points to a GIF file in `D:\tmp\flt` folder, using exponential frequency scale, displaying values in decibels (top at 20 dB, range 40 dB) with grid on the image of 600x400 pixels. Resulting image:
+
+![image](equ10-1.gif)
+
+<pre>
+filters.exe -fltequ 8191 -fltwnd -octstep 1/2 -equdB 0;3;0;6;0;-3;-6;0;12;0;-3;3;0;6;0;-3;-6;0;12;0 -outfolder D:\tmp\flt -fft 65536 -dB -top 20 -range 40 -grid -height 400 -width 600 -exp 20 -gif
+</pre>
+Saves frequency response of 20-band equalizer (with 1/2 octave bands) filter with length of 8191 points to a GIF file in `D:\tmp\flt` folder, using 65536 points FFT size, exponential frequency scale, displaying values in decibels (top at 20 dB, range 40 dB) with grid on the image of 600x400 pixels. Resulting image:
+
+![image](equ20.gif)
+
+<pre>
+filters.exe -fltequ 8191 -fltwnd -equdB 0;3;0;6;0;-3;-6;0;12;0 -equdB2 0;-6;0;3;0;6;-3;0;-12;0 -freqsteps 50 -delay 20 -outfolder D:\tmp\flt -dB -top 20 -range 40 -grid -height 400 -width 600 -exp 20 -gif
+</pre>
+Saves frequency response animation of 10-band equalizer filter with length of 8191 points to a GIF file in `D:\tmp\flt` folder (image drawing parameters are the same as in examples above). 50 steps between two states are saved to multi-frame GIF with 200 ms delay:
+
+![image](equ10-2.gif)
+
+Kaiser windowing in filter calculation is used in all examples above.
 
 ## External libraries
 

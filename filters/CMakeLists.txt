@@ -22,9 +22,13 @@ FetchContent_MakeAvailable(fmt)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt-header-only)
 
-set(BUILD_EXAMPLES OFF)
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
+set(BUILD_EXAMPLES OFF)
 set(BUILD_TESTS OFF)
+
+option(BUILD_TESTS "Build tests" OFF)
+option(BUILD_EXAMPLES "Build examples" OFF)
 
 FetchContent_Declare(
   AudioFile

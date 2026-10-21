@@ -66,7 +66,7 @@ public:
 	std::tuple<std::error_code, float, float> saveImpImage(CImgSaveHelper& is, const imgOptions& io, const std::vector<float>& imp,
 		const int nFreq, const bool bCalcRange = true, float rngMin = 0.0f, float rngMax = 0.0f);
 protected:
-	size_t getFFTsize(size_t nSamples, bool bUp) const;
+	size_t getFFTsize(size_t nSamples) const;
 	std::pair<int, double> CalcResp(const size_t fsz);
 	std::tuple<bool, bool, int, int, HEZDIMAGE, HEZDFONT> initImage(const imgOptions& io, const std::vector<float>& data);
 	std::error_code saveImage(CImgSaveHelper& is, const imgOptions& io, HEZDIMAGE hDib, HEZDFONT hFont, const int w, const int h);

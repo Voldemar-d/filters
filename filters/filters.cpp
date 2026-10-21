@@ -14,22 +14,36 @@
 
 namespace fs = std::filesystem;
 
-void printHelp(char** argv) {
+void printHelp(char** argv, const bool bEqu) {
 	fs::path fmain(argv[0]);
 	std::cout << "Usage: " << fmain.filename() << " [options]" << '\n';
 	std::cout << "\noptions can be:" << '\n';
-	std::cout << "-help\t\tdisplay this help" << '\n';
+	std::cout << "-help\t\tdisplay " << (bEqu ? "" : "this ") << "help on low/high-pass filter" << '\n';
+	std::cout << "-helpequ\tdisplay " << (bEqu ? "this " : "") << "help on graphic equalizer" << '\n';
 	std::cout << "-sr {N}\t\tset sample rate to {N} Hz (can be " << MIN_SAMPLE_RATE << " to " << MAX_SAMPLE_RATE << ", default is " << DEF_SAMPLE_RATE << ")\n";
-	std::cout << "-flthp {N}\tgenerate high-pass FIR filter of {N} points length (127+ recommended)" << '\n';
-	std::cout << "-fltlp {N}\tgenerate low-pass FIR filter of {N} points length (127+ recommended)" << '\n';
-	std::cout << "-fltfreq {N}\tset {N} Hz frequency for low/high-pass FIR filter (must be less than half sample rate)" << '\n';
+	if (bEqu) { // graphic equalizer
+		std::cout << "-fltequ {N}\tgenerate graphic equalizer FIR filter of {N} points length (127+ recommended)" << '\n';
+		std::cout << "-mdB {N}\tset master gain to {N} dB (can be " << MIN_GAIN_DB << " to " << MAX_GAIN_DB << ", default is 0)\n";
+		std::cout << "-octstep {N}\tset step in octaves = size of equalizer frequency band" << '\n';
+		std::cout << "\t(can be " << MIN_OCT_STEP << " to " << MAX_OCT_STEP << ", default is " << DEFAULT_OCT_STEP << "; you can specify 1/2, 1/3 etc.)\n";
+		std::cout << "-equfreq {N}\tset frequency of lowest equalizer band to {N} Hz (can be " << MIN_EXP_FREQ << " to " << MAX_EXP_FREQ << ", default is " << DEFAULT_BASE_FREQ << ")\n";
+		std::cout << "-equdB {N1;N2;...}\tset volume (can be " << MIN_GAIN_DB << " to " << MAX_GAIN_DB << ") in equalizer bands (in dB separated with ;)" << '\n';
+		std::cout << "\tIMPORTANT: at least 2 bands must be specified, maximum is " << MAX_EQU_BANDS << " bands" << '\n';
+		std::cout << "-equdB2 {N1;N2;...}\tset volume in bands for 2nd state used for generating series of filters" << '\n';
+		std::cout << "\tIMPORTANT: number of bands must be the same as specified in -equdB" << '\n';
+	}
+	else { // low/high-pass filter
+		std::cout << "-flthp {N}\tgenerate high-pass FIR filter of {N} points length (127+ recommended)" << '\n';
+		std::cout << "-fltlp {N}\tgenerate low-pass FIR filter of {N} points length (127+ recommended)" << '\n';
+		std::cout << "-fltfreq {N}\tset {N} Hz frequency for low/high-pass FIR filter (must be less than half sample rate)" << '\n';
+		std::cout << "-fltinv\t\tcalculate filter response using inverse FFT transform" << '\n';
+	}
 	std::cout << "-fltwnd\t\tcalculate filter response with Kaiser windowing" << '\n';
-	std::cout << "-fltinv\t\tcalculate filter response using inverse FFT transform" << '\n';
 	std::cout << "-fft {N}\tset {N} minimal points in FFT transform used for calculating/drawing frequency response" << '\n';
 	std::cout << "-outfolder {path}\tset folder (will be created if doesn't exist) for saving image/WAV file(s)" << '\n';
 	std::cout << "-width {N}\tset width of output image file to {N} pixels (at least " << MIN_IMG_DIM << ")\n";
 	std::cout << "\tIMPORTANT: if width isn't specified then full response will be drawn" << '\n';
-	std::cout << "-height {N}\tset height of output image file to {N} pixels (at least " << MIN_IMG_DIM << ")\n";
+	std::cout << "-height {N}\tset height of output image file to {N} pixels (at least " << MIN_IMG_DIM << ", default is " << DEFAULT_HEIGHT << ")\n";
 	std::cout << "-dB\t\tuse vertical scale in decibels for drawing frequency response" << '\n';
 	std::cout << "-range {dB}\tset vertical range (100 dB by default) for drawing in decibels" << '\n';
 	std::cout << "-top {dB}\tset top of range (0 dB by default) for drawing in decibels" << '\n';
@@ -39,12 +53,12 @@ void printHelp(char** argv) {
 	std::cout << "-bw\t\tdraw image in black and white (color by default)" << '\n';
 	std::cout << "-gif\t\tsave to GIF (color only) instead of BMP" << '\n';
 	std::cout << "-imp\t\tsave separate image with impulse response of generated filter" << '\n';
-	std::cout << "-stepsize {K}\tset filter length step to {K} points (must be even) or frequency step to K Hz" << '\n';
-	std::cout << "\tNOTE: step size can be negative for decreasing filter length or frequency" << '\n';
+	std::cout << "-stepsize {K}\tset filter length step to {K} points (must be even)" << (bEqu ? "" : " or frequency step to K Hz") << '\n';
+	std::cout << "\tNOTE: step size can be negative for decreasing filter length" << (bEqu ? "" : " or frequency") << '\n';
 	std::cout << "-lensteps {N}\tgenerate {N} filters with length varying with {K} points step" << '\n';
 	std::cout << "\tIMPORTANT: series of filters by length is generated if {N} > 1 and non-zero {K} (must be even)" << '\n';
-	std::cout << "-freqsteps {M}\tgenerate {M} filters with frequency varying with {K} Hz step" << '\n';
-	std::cout << "\tIMPORTANT: series of filters by frequency is generated if {M} > 1 and non-zero {K}" << '\n';
+	std::cout << "-freqsteps {M}\tgenerate {M} " << (bEqu ? "equalizers varying between two states in M steps" : "filters with frequency varying with {K} Hz step") << '\n';
+	std::cout << "\tIMPORTANT: series of " << (bEqu ? "equalizers" : "filters by frequency") << " is generated if {M} > 1" << (bEqu ? "" : " and non-zero {K}") << '\n';
 	std::cout << "-delay {D}\tsave series of filters to multi-frame GIF with delay in 1/100th sec, {D} must be > 0" << '\n';
 	std::cout << "\tIMPORTANT: multi-frame GIF is saved only if image width is specified" << '\n';
 	std::cout << "-wav {infile}\tload WAV file, process with generated filter and save result to output folder" << '\n';
@@ -66,7 +80,11 @@ int main(int argc, char* argv[])
 	InputParser input(all_args);
 
 	if (input.cmdOptionExists("-help")) {
-		printHelp(argv);
+		printHelp(argv, false);
+		return 0;
+	}
+	else if (input.cmdOptionExists("-helpequ")) {
+		printHelp(argv, true);
 		return 0;
 	}
 
@@ -108,29 +126,39 @@ int main(int argc, char* argv[])
 	std::list<std::tuple<int, int, CFIRFilter>> lstFIR;
 	{
 		int nFLen = nFltLen, nFreq = nFltFreq;
-		const bool bStepByFreq = io.StepByFreq();
+		const bool bStepByFreq = io.StepByFreq(), bEqu = io.IsEqu();
 		const int nSteps = bStepByFreq ? io.nFreqSteps : io.nLenSteps;
 		for (int i = 0; i < nSteps; i++) {
 			lstFIR.push_back({});
 			auto& [flen, freq, fir] = lstFIR.back();
-			if (io.LPF) {
-				if (bInv)
-					fir.InvLowHighPass<true>(bKaiser, nFLen, nFreq, nSR, nFFTsz);
-				else
-					fir.CalcLowPass(bKaiser, nFLen, nFreq, nSR, nFFTsz);
+			if (bEqu) { // graphic equalizer
+				fir.CalcFIREqu(nFLen, nFFTsz, io.dBmaster, (uint32_t)io.dBequ.size(), io.dBequ.data(), io.baseFreq / double(nSR),
+					io.octStep, bKaiser ? eWndType::Kaiser : eWndType::none);
+				if (bStepByFreq)
+					io.equStep();
 			}
-			else {
-				if (bInv)
-					fir.InvLowHighPass<false>(bKaiser, nFLen, nFreq, nSR, nFFTsz);
-				else
-					fir.CalcHighPass(bKaiser, nFLen, nFreq, nSR, nFFTsz);
+			else { // low/high-pass filter
+				if (io.LPF) {
+					if (bInv)
+						fir.InvLowHighPass<true>(bKaiser, nFLen, nFreq, nSR, nFFTsz);
+					else
+						fir.CalcLowPass(bKaiser, nFLen, nFreq, nSR, nFFTsz);
+				}
+				else {
+					if (bInv)
+						fir.InvLowHighPass<false>(bKaiser, nFLen, nFreq, nSR, nFFTsz);
+					else
+						fir.CalcHighPass(bKaiser, nFLen, nFreq, nSR, nFFTsz);
+				}
 			}
 			flen = nFLen;
 			freq = nFreq;
 			if (bStepByFreq) {
-				nFreq += io.nStepSize;
-				if (nFreq < nMinFltFreq || nFreq > nMaxFltFreq)
-					break;
+				if (!bEqu) {
+					nFreq += io.nStepSize;
+					if (nFreq < nMinFltFreq || nFreq > nMaxFltFreq)
+						break;
+				}
 			}
 			else {
 				nFLen += io.nStepSize;
